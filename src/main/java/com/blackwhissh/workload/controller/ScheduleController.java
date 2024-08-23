@@ -2,6 +2,7 @@ package com.blackwhissh.workload.controller;
 
 import com.blackwhissh.workload.dto.request.ScheduleByYearMonthRequest;
 import com.blackwhissh.workload.dto.request.ScheduleByYearMonthAndWorkIdRequest;
+import com.blackwhissh.workload.dto.response.ScheduleByYearMonthResponse;
 import com.blackwhissh.workload.entity.Schedule;
 import com.blackwhissh.workload.service.ScheduleService;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,7 @@ public class ScheduleController {
         return ResponseEntity.ok(scheduleService.getScheduleByYearMonthAndWorkId(request));
     }
     @PostMapping("/all-by-month")
-    private ResponseEntity<List<Schedule>> getScheduleByYearMonth(@RequestBody ScheduleByYearMonthRequest request){
+    private ResponseEntity<List<ScheduleByYearMonthResponse>> getScheduleByYearMonth(@RequestBody ScheduleByYearMonthRequest request){
         return ResponseEntity.ok(scheduleService.getScheduleByYearMonth(request));
     }
 }

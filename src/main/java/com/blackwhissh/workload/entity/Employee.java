@@ -16,6 +16,7 @@ public class Employee {
     @Enumerated(value = EnumType.STRING)
     private ShiftEnum shift;
     private int set;
+    @Transient
     @OneToMany
     private List<Schedule> scheduleList;
 

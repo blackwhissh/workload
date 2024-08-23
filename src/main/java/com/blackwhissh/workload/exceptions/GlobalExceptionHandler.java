@@ -25,8 +25,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         response.setMessage("Wrong enum type provided for work day type");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
-    @ExceptionHandler(WorkScheduleNotFoundException.class)
-    public ResponseEntity<Object> handleWorkScheduleNotFoundException(WorkScheduleNotFoundException e) {
+    @ExceptionHandler(ScheduleNotFoundException.class)
+    public ResponseEntity<Object> handleWorkScheduleNotFoundException(ScheduleNotFoundException e) {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
         response.setMessage("Work schedule not found");
@@ -53,11 +53,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         response.setMessage("Employee with this work ID already exists");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
+
     @ExceptionHandler(EmployeeNotFoundException.class)
     public ResponseEntity<Object> handleEmployeeNotFoundException(EmployeeNotFoundException e) {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
         response.setMessage("Employee with this work ID not found");
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(HourRemoveException.class)
+    public ResponseEntity<Object> handleHourRemoveException(HourRemoveException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("First or last hour of a day can not be removed!");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 }

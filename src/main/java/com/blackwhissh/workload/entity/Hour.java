@@ -15,6 +15,8 @@ public class Hour {
     private LocalTime start;
     @Column(name = "end_time")
     private LocalTime end;
+    @ManyToOne
+    private Schedule schedule;
 
     public Hour() {
     }
@@ -55,5 +57,13 @@ public class Hour {
                 ", start=" + start +
                 ", end=" + end +
                 '}';
+    }
+
+    public Schedule getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(Schedule schedule) {
+        this.schedule = schedule;
     }
 }

@@ -1,15 +1,20 @@
 package com.blackwhissh.workload.service;
 
+import com.blackwhissh.workload.dto.HourDTO;
+import com.blackwhissh.workload.dto.request.AddHourRequest;
 import com.blackwhissh.workload.entity.Hour;
 import com.blackwhissh.workload.entity.Schedule;
-import com.blackwhissh.workload.exceptions.list.WorkScheduleNotFoundException;
+import com.blackwhissh.workload.exceptions.list.HourRemoveException;
+import com.blackwhissh.workload.exceptions.list.ScheduleNotFoundException;
 import com.blackwhissh.workload.repository.HourRepository;
 import com.blackwhissh.workload.repository.ScheduleRepository;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -23,11 +28,15 @@ public class HourService {
         this.hourRepository = hourRepository;
     }
 
-    public List<Hour> getHoursByScheduleId(Integer scheduleId) {
+    public List<HourDTO> getHoursByScheduleId(Integer scheduleId) {
         LOGGER.info("Started get hours by schedule with ID: " + scheduleId);
         Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(WorkScheduleNotFoundException::new);
-        return schedule.getHours();
+                .orElseThrow(ScheduleNotFoundException::new);
+        List<HourDTO> hourDTOList = new ArrayList<>();
+        schedule.getHours().forEach(hour ->
+                hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd()))
+        );
+        return hourDTOList;
     }
 
     public void generateMorningHours(Schedule schedule) {
@@ -62,8 +71,38 @@ public class HourService {
         List<Hour> hours = List.of(first, second, third, fourth);
 
         if (schedule.getWorkStatus().toString().equalsIgnoreCase("work")) {
+            for (Hour hour : hours) {
+                hour.setSchedule(schedule);
+            }
             hourRepository.saveAll(hours);
             schedule.setHours(hours);
         }
     }
+
+    @Transactional
+    public void removeHourById(Integer hourId) {
+        Hour hour = hourRepository.findById(hourId).orElseThrow();
+        Schedule schedule = hour.getSchedule();
+        List<Hour> hours = schedule.getHours();
+        if (hours.get(0) == hour || hours.get(3) == hour) {
+            LOGGER.error("First or last hour of day can not be deleted");
+            throw new HourRemoveException();
+        } else {
+            hours.remove(hour);
+            schedule.setTotalHours(schedule.getTotalHours() - 2);
+            schedule.setHours(hours);
+            scheduleRepository.save(schedule);
+            LOGGER.info("Hour with ID: " + hourId + " removed successfully!");
+        }
+    }
+
+//    public List<HourDTO> addHour(AddHourRequest request) {
+//        Schedule schedule = scheduleRepository.findById(request.scheduleId())
+//                .orElseThrow(ScheduleNotFoundException::new);
+//
+//    }
+//
+//    private boolean checkWeekHours(Schedule schedule) {
+//        schedule.getEmployee()
+//    }
 }

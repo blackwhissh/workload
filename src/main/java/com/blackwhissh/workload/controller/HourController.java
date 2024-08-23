@@ -1,5 +1,6 @@
 package com.blackwhissh.workload.controller;
 
+import com.blackwhissh.workload.dto.HourDTO;
 import com.blackwhissh.workload.entity.Hour;
 import com.blackwhissh.workload.service.HourService;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,13 @@ public class HourController {
     }
 
     @GetMapping()
-    public ResponseEntity<List<Hour>> getHoursByScheduleId(@RequestParam(name = "scheduleId") Integer scheduleId) {
+    public ResponseEntity<List<HourDTO>> getHoursByScheduleId(@RequestParam(name = "scheduleId") Integer scheduleId) {
         return ResponseEntity.ok(hourService.getHoursByScheduleId(scheduleId));
+    }
+
+    @PatchMapping("/remove")
+    public ResponseEntity<?> removeHourById(@RequestParam(name = "hourId") Integer hourId) {
+        hourService.removeHourById(hourId);
+        return ResponseEntity.ok("Hour removed successfully!");
     }
 }
