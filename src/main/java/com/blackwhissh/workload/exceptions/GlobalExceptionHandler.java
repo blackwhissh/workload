@@ -1,9 +1,6 @@
 package com.blackwhissh.workload.exceptions;
 
-import com.blackwhissh.workload.exceptions.list.UserNotFoundException;
-import com.blackwhissh.workload.exceptions.list.WorkDayNotFoundException;
-import com.blackwhissh.workload.exceptions.list.WorkScheduleNotFoundException;
-import com.blackwhissh.workload.exceptions.list.WrongWorkDayTypeException;
+import com.blackwhissh.workload.exceptions.list.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -40,6 +37,27 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
         response.setMessage("Work day not found");
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+    @ExceptionHandler(WrongMonthException.class)
+    public ResponseEntity<Object> handleWrongMonthException(WrongMonthException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Wrong month provided");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+    @ExceptionHandler(EmployeeAlreadyExistsException.class)
+    public ResponseEntity<Object> handleEmployeeAlreadyExistsException(EmployeeAlreadyExistsException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Employee with this work ID already exists");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+    @ExceptionHandler(EmployeeNotFoundException.class)
+    public ResponseEntity<Object> handleEmployeeNotFoundException(EmployeeNotFoundException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Employee with this work ID not found");
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 }
