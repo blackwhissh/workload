@@ -3,6 +3,8 @@ package com.blackwhissh.workload.entity;
 import com.blackwhissh.workload.entity.enums.ShiftEnum;
 import jakarta.persistence.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "employee")
 public class Employee {
@@ -14,6 +16,8 @@ public class Employee {
     @Enumerated(value = EnumType.STRING)
     private ShiftEnum shift;
     private int set;
+    @OneToMany
+    private List<Schedule> scheduleList;
 
     public Employee() {
     }
@@ -64,5 +68,13 @@ public class Employee {
                 ", shift=" + shift +
                 ", set=" + set +
                 '}';
+    }
+
+    public List<Schedule> getScheduleList() {
+        return scheduleList;
+    }
+
+    public void setScheduleList(List<Schedule> scheduleList) {
+        this.scheduleList = scheduleList;
     }
 }

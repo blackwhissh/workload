@@ -64,7 +64,7 @@ public class ScheduleService {
             }
 
             generateHours(employee, schedule);
-
+            schedule.setTotalHours(8d);
             scheduleList.add(schedule);
             startDate = startDate.plusDays(1);
         }

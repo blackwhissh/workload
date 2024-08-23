@@ -21,6 +21,7 @@ public class Schedule {
     private LocalDate date;
     @OneToMany
     private List<Hour> hours;
+    private Double totalHours;
 
     public Schedule() {
     }
@@ -81,5 +82,13 @@ public class Schedule {
                 ", date=" + date +
                 ", hours=" + hours +
                 '}';
+    }
+
+    public Double getTotalHours() {
+        return totalHours;
+    }
+
+    public void setTotalHours(Double totalHours) {
+        this.totalHours = totalHours;
     }
 }

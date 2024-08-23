@@ -26,6 +26,7 @@ public class EmployeeService {
     }
     @Transactional
     public RegisterEmployeeResponse registerEmployee(RegisterEmployeeRequest request){
+        if (request.set() > 2 || request.set() <= 0) throw new IllegalArgumentException("Wrong set number provided");
         if (employeeRepository.existsByWorkId(request.workId())){
             LOGGER.warn("Employee with this work ID already exists");
             throw new IllegalArgumentException();
