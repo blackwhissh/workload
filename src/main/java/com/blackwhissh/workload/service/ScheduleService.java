@@ -1,5 +1,6 @@
 package com.blackwhissh.workload.service;
 
+import com.blackwhissh.workload.dto.EmployeeDTO;
 import com.blackwhissh.workload.dto.HourDTO;
 import com.blackwhissh.workload.dto.request.ScheduleByYearMonthAndWorkIdRequest;
 import com.blackwhissh.workload.dto.request.ScheduleByYearMonthRequest;
@@ -81,13 +82,16 @@ public class ScheduleService {
         scheduleRepository.saveAll(scheduleList);
     }
 
-    public List<Schedule> getScheduleByYearMonthAndWorkId(ScheduleByYearMonthAndWorkIdRequest request) {
+    public List<ScheduleByYearMonthResponse> getScheduleByYearMonthAndWorkId(ScheduleByYearMonthAndWorkIdRequest request) {
         if (request.month() > 12 || request.month() <= 0) throw new WrongMonthException();
         Employee employee = employeeRepository.findByWorkId(request.workId()).orElseThrow(EmployeeNotFoundException::new);
         LocalDate start = LocalDate.of(request.year(), request.month(), 1);
         int lastDayOfMonth = YearMonth.of(request.year(), request.month()).atEndOfMonth().getDayOfMonth();
         LocalDate end = LocalDate.of(request.year(), request.month(), lastDayOfMonth);
-        return scheduleRepository.findAllByEmployeeAndDateBetween(employee, start, end);
+        List<ScheduleByYearMonthResponse> scheduleByYearMonthList = new ArrayList<>();
+        List<Schedule> allByDateBetweenAndEmployeeWorkId = scheduleRepository.findAllByDateBetweenAndEmployee_WorkId(start, end, employee.getWorkId());
+        mapToScheduleDto(allByDateBetweenAndEmployeeWorkId, scheduleByYearMonthList);
+        return scheduleByYearMonthList;
     }
 
     public List<ScheduleByYearMonthResponse> getScheduleByYearMonth(ScheduleByYearMonthRequest request) {
@@ -99,20 +103,30 @@ public class ScheduleService {
         List<Schedule> allByDateBetween = scheduleRepository.findAllByDateBetween(start, end);
         List<ScheduleByYearMonthResponse> scheduleByYearMonthList = new ArrayList<>();
 
+        mapToScheduleDto(allByDateBetween, scheduleByYearMonthList);
+        return scheduleByYearMonthList;
+    }
+
+    private void mapToScheduleDto(List<Schedule> allByDateBetween, List<ScheduleByYearMonthResponse> scheduleByYearMonthList) {
         for (Schedule schedule : allByDateBetween) {
             List<HourDTO> hourDTOList = new ArrayList<>();
             schedule.getHours().forEach(hour ->
                     hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd()))
             );
 
+            EmployeeDTO employeeDTO = new EmployeeDTO(
+                    schedule.getEmployee().getId(),
+                    schedule.getEmployee().getWorkId(),
+                    schedule.getEmployee().getShift(),
+                    schedule.getEmployee().getSet());
+
             scheduleByYearMonthList.add(new ScheduleByYearMonthResponse(
                     schedule.getScheduleId(),
-                    schedule.getEmployee(),
+                    employeeDTO,
                     schedule.getWorkStatus(),
                     schedule.getDate(),
                     hourDTOList,
                     schedule.getTotalHours()));
         }
-        return scheduleByYearMonthList;
     }
 }

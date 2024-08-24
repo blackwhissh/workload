@@ -1,11 +1,11 @@
-package com.blackwhissh.workload;
+package com.blackwhissh.workload.utils;
 
 import java.util.Random;
 import java.util.logging.Logger;
 
-public class Utils {
+public class GeneratorUtils {
     private final static String ALLOWED_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    private static final Logger logger = Logger.getLogger(Utils.class.getName());
+    private static final Logger logger = Logger.getLogger(GeneratorUtils.class.getName());
     private static int serialNumber = 0;
     private static StringBuilder sb;
 

@@ -1,11 +1,11 @@
 package com.blackwhissh.workload.service;
 
 import com.blackwhissh.workload.dto.HourDTO;
-import com.blackwhissh.workload.dto.request.AddHourRequest;
+import com.blackwhissh.workload.dto.request.AddNewHourRequest;
 import com.blackwhissh.workload.entity.Hour;
 import com.blackwhissh.workload.entity.Schedule;
-import com.blackwhissh.workload.exceptions.list.HourRemoveException;
-import com.blackwhissh.workload.exceptions.list.ScheduleNotFoundException;
+import com.blackwhissh.workload.entity.enums.StatusEnum;
+import com.blackwhissh.workload.exceptions.list.*;
 import com.blackwhissh.workload.repository.HourRepository;
 import com.blackwhissh.workload.repository.ScheduleRepository;
 import jakarta.transaction.Transactional;
@@ -13,9 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalTime;
+import java.time.*;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class HourService {
@@ -30,12 +32,9 @@ public class HourService {
 
     public List<HourDTO> getHoursByScheduleId(Integer scheduleId) {
         LOGGER.info("Started get hours by schedule with ID: " + scheduleId);
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(ScheduleNotFoundException::new);
+        Schedule schedule = scheduleRepository.findById(scheduleId).orElseThrow(ScheduleNotFoundException::new);
         List<HourDTO> hourDTOList = new ArrayList<>();
-        schedule.getHours().forEach(hour ->
-                hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd()))
-        );
+        schedule.getHours().forEach(hour -> hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd())));
         return hourDTOList;
     }
 
@@ -84,7 +83,7 @@ public class HourService {
         Hour hour = hourRepository.findById(hourId).orElseThrow();
         Schedule schedule = hour.getSchedule();
         List<Hour> hours = schedule.getHours();
-        if (hours.get(0) == hour || hours.get(3) == hour) {
+        if (hours.get(0) == hour || hours.get(hours.size() - 1) == hour) {
             LOGGER.error("First or last hour of day can not be deleted");
             throw new HourRemoveException();
         } else {
@@ -96,13 +95,130 @@ public class HourService {
         }
     }
 
-//    public List<HourDTO> addHour(AddHourRequest request) {
-//        Schedule schedule = scheduleRepository.findById(request.scheduleId())
-//                .orElseThrow(ScheduleNotFoundException::new);
-//
-//    }
-//
-//    private boolean checkWeekHours(Schedule schedule) {
-//        schedule.getEmployee()
-//    }
+    //    public List<HourDTO> swapHour()
+    public List<HourDTO> addNewHour(AddNewHourRequest request) {
+        Schedule schedule = scheduleRepository.findById(request.scheduleId())
+                .orElseThrow(ScheduleNotFoundException::new);
+
+        if (validateHour(schedule, request.start(), request.end())) {
+            double diff = Duration.between(request.start(), request.end()).toHours();
+            schedule.setTotalHours(schedule.getTotalHours() + diff);
+            List<Hour> hours = schedule.getHours();
+            hours.add(hourRepository.save(new Hour(request.start(), request.end())));
+            schedule.setHours(hours);
+            scheduleRepository.save(schedule);
+            List<HourDTO> hourDTOList = new ArrayList<>();
+            for (Hour hour : hours) {
+                hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd()));
+            }
+            LOGGER.info("Add hour validated successfully");
+            return hourDTOList;
+        }
+        LOGGER.error("Error during validation");
+        throw new HourAdditionValidationException();
+    }
+
+    public double getWeekHours(Schedule schedule) {
+        LOGGER.info("Calculating week hours");
+        List<Schedule> weeklyScheduleList = getWeeklySchedule(schedule);
+        double weekHours = 0;
+        for (Schedule weekSchedule : weeklyScheduleList) {
+            weekHours += weekSchedule.getTotalHours();
+        }
+        return weekHours;
+    }
+
+    public double getMonthHours(Schedule schedule) {
+        LOGGER.info("Calculating month hours");
+        List<Schedule> monthlyScheduleList = getMonthlySchedule(schedule);
+        double monthHours = 0;
+        for (Schedule monthSchedule : monthlyScheduleList) {
+            monthHours += monthSchedule.getTotalHours();
+        }
+        return monthHours;
+    }
+
+    private boolean validateHour(Schedule schedule, LocalTime start, LocalTime end) {
+        LOGGER.info("Started hour validation");
+        return !checkHourOccupied(schedule, start, end)
+                && checkDailyHoursLimit(schedule, start, end)
+                && checkWeekHoursLimit(schedule, start, end)
+                && checkMonthlyHoursLimit(schedule, start, end)
+                && checkNextScheduleHour(schedule, end);
+    }
+
+    private boolean checkHourOccupied(Schedule schedule, LocalTime start, LocalTime end) {
+        LOGGER.info("Started checking if provided hour is occupied or not");
+        List<Hour> hours = schedule.getHours();
+        for (Hour hour : hours) {
+            if (start.isBefore(hour.getEnd()) && end.isAfter(hour.getStart())) {
+                LOGGER.error("Current hour is occupied");
+                throw new HourIsOccupiedException();
+            }
+        }
+        return false;
+    }
+
+    private boolean checkDailyHoursLimit(Schedule schedule, LocalTime start, LocalTime end) {
+        LOGGER.info("Started checking daily hours limit");
+        double currentDayHours = schedule.getTotalHours();
+        double hours = Duration.between(start, end).toHours();
+        if (currentDayHours + hours > 12) {
+            LOGGER.error("Hour addition exceeds daily limit");
+            throw new DailyHoursLimitExceedsException();
+        }
+        return true;
+    }
+
+    private boolean checkWeekHoursLimit(Schedule schedule, LocalTime start, LocalTime end) {
+        LOGGER.info("Started checking week hours limit");
+        double currentWeekHours = getWeekHours(schedule);
+        double hours = Duration.between(start, end).toHours();
+        if (currentWeekHours + hours > 40) {
+            LOGGER.error("Hour addition exceeds week limit");
+            throw new WeeklyHoursLimitExceedsException();
+        }
+        return true;
+    }
+
+    private boolean checkMonthlyHoursLimit(Schedule schedule, LocalTime start, LocalTime end) {
+        LOGGER.info("Started checking month hours limit");
+        double currentMonthHours = getMonthHours(schedule);
+        double hours = Duration.between(start, end).toHours();
+        if (currentMonthHours + hours > 160) {
+            LOGGER.error("Hour addition exceeds month limit");
+            throw new MonthlyHoursLimitExceedsException();
+        }
+        return true;
+    }
+
+    private boolean checkNextScheduleHour(Schedule schedule, LocalTime end) {
+        boolean result = true;
+        LOGGER.info("Checking gap between schedules");
+        Optional<Schedule> nextScheduleOptional = scheduleRepository.findFirstByDateAfterAndWorkStatus(schedule.getDate(), StatusEnum.WORK);
+        if (nextScheduleOptional.isPresent()) {
+            Schedule nextSchedule = nextScheduleOptional.get();
+            LocalDateTime currentDateTime = LocalDateTime.of(schedule.getDate().getYear(), schedule.getDate().getMonthValue(), schedule.getDate().getDayOfMonth(), end.getHour(), end.getMinute());
+            LocalDateTime nextDateTime = LocalDateTime.of(nextSchedule.getDate().getYear(), nextSchedule.getDate().getMonthValue(), nextSchedule.getDate().getDayOfMonth(), nextSchedule.getHours().get(0).getStart().getHour(), nextSchedule.getHours().get(0).getStart().getMinute());
+            double diff = Duration.between(currentDateTime, nextDateTime).toHours();
+            if (diff < 12) {
+                LOGGER.error("Gap is less than 12");
+                throw new ScheduleGapException();
+            }
+        }
+
+        return result;
+    }
+
+    private List<Schedule> getMonthlySchedule(Schedule schedule) {
+        LocalDate startOfMonth = schedule.getDate().with(TemporalAdjusters.firstDayOfMonth());
+        LocalDate endOfMonth = schedule.getDate().with(TemporalAdjusters.lastDayOfMonth());
+        return scheduleRepository.findAllByDateBetweenAndEmployee_WorkId(startOfMonth, endOfMonth, schedule.getEmployee().getWorkId());
+    }
+
+    private List<Schedule> getWeeklySchedule(Schedule schedule) {
+        LocalDate startOfWeek = schedule.getDate().with(DayOfWeek.MONDAY);
+        LocalDate endOfWeek = startOfWeek.plusDays(6);
+        return scheduleRepository.findAllByDateBetweenAndEmployee_WorkId(startOfWeek, endOfWeek, schedule.getEmployee().getWorkId());
+    }
 }

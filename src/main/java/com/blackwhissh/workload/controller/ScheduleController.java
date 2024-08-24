@@ -20,7 +20,7 @@ public class ScheduleController {
         this.scheduleService = scheduleService;
     }
     @PostMapping("/get-by-workId")
-    private ResponseEntity<List<Schedule>> getScheduleByYearMonthAndWorkId(@RequestBody ScheduleByYearMonthAndWorkIdRequest request){
+    private ResponseEntity<List<ScheduleByYearMonthResponse>> getScheduleByYearMonthAndWorkId(@RequestBody ScheduleByYearMonthAndWorkIdRequest request){
         return ResponseEntity.ok(scheduleService.getScheduleByYearMonthAndWorkId(request));
     }
     @PostMapping("/all-by-month")

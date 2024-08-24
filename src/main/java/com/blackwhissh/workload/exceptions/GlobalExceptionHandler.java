@@ -69,4 +69,53 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         response.setMessage("First or last hour of a day can not be removed!");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(HourAdditionValidationException.class)
+    public ResponseEntity<Object> handleHourAdditionValidationException(HourAdditionValidationException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Validation of adding hour is unsuccessful");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(WeeklyHoursLimitExceedsException.class)
+    public ResponseEntity<Object> handleWeeklyHoursLimitExceedsException(WeeklyHoursLimitExceedsException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("New hour exceeds weekly hours limit");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MonthlyHoursLimitExceedsException.class)
+    public ResponseEntity<Object> handleMonthlyHoursLimitExceedsException(MonthlyHoursLimitExceedsException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("New hour exceeds monthly hours limit");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ScheduleGapException.class)
+    public ResponseEntity<Object> handleScheduleGapException(ScheduleGapException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Not enough gap between schedules");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HourIsOccupiedException.class)
+    public ResponseEntity<Object> handleHourIsOccupiedException(HourIsOccupiedException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Hour is occupied!");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DailyHoursLimitExceedsException.class)
+    public ResponseEntity<Object> handleDailyHoursLimitExceedsException(DailyHoursLimitExceedsException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("New hour exceeds daily hours limit");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
 }

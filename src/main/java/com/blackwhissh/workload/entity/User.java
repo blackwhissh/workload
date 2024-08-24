@@ -1,6 +1,6 @@
 package com.blackwhissh.workload.entity;
 
-import com.blackwhissh.workload.Utils;
+import com.blackwhissh.workload.utils.GeneratorUtils;
 import com.blackwhissh.workload.entity.enums.RoleEnum;
 import jakarta.persistence.*;
 
@@ -39,7 +39,7 @@ public class User {
         this.role = role;
         this.lastName = lastName;
         this.isActive = isActive;
-        String generatedPassword = Utils.generatePassword();
+        String generatedPassword = GeneratorUtils.generatePassword();
         this.tempPass = generatedPassword;
         this.password = generatedPassword;
     }
