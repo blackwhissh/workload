@@ -111,7 +111,7 @@ public class ScheduleService {
         for (Schedule schedule : allByDateBetween) {
             List<HourDTO> hourDTOList = new ArrayList<>();
             schedule.getHours().forEach(hour ->
-                    hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd()))
+                    hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists()))
             );
 
             EmployeeDTO employeeDTO = new EmployeeDTO(
@@ -126,7 +126,8 @@ public class ScheduleService {
                     schedule.getWorkStatus(),
                     schedule.getDate(),
                     hourDTOList,
-                    schedule.getTotalHours()));
+                    schedule.getTotalHours(),
+                    schedule.getEmployee().getShift()));
         }
     }
 }

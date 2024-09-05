@@ -17,6 +17,8 @@ public class Hour {
     private LocalTime end;
     @ManyToOne
     private Schedule schedule;
+    private Boolean swapExists = false;
+    private Boolean giftExists = false;
 
     public Hour() {
     }
@@ -65,5 +67,21 @@ public class Hour {
 
     public void setSchedule(Schedule schedule) {
         this.schedule = schedule;
+    }
+
+    public Boolean getSwapExists() {
+        return swapExists;
+    }
+
+    public void setSwapExists(Boolean swapExists) {
+        this.swapExists = swapExists;
+    }
+
+    public Boolean getGiftExists() {
+        return giftExists;
+    }
+
+    public void setGiftExists(Boolean giftExists) {
+        this.giftExists = giftExists;
     }
 }

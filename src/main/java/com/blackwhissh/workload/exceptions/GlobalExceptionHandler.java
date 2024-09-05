@@ -30,7 +30,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
         response.setMessage("Work schedule not found");
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
     @ExceptionHandler(WorkDayNotFoundException.class)
     public ResponseEntity<Object> handleWorkDayNotFoundException(WorkDayNotFoundException e) {
@@ -115,6 +115,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
         response.setMessage("New hour exceeds daily hours limit");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(FirstOrLastHourSwapException.class)
+    public ResponseEntity<Object> handleFirstOrLastHourSwapException(FirstOrLastHourSwapException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("First or last hour of a day can not be swapped");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HourSwapException.class)
+    public ResponseEntity<Object> handleHourSwapException(HourSwapException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Error during swapping hour");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SwapRequestsExistsException.class)
+    public ResponseEntity<Object> handleSwapRequestsExistsException(SwapRequestsExistsException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Swap request already exists for this hour");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 

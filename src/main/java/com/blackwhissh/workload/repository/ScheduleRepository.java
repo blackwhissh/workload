@@ -13,4 +13,5 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
     List<Schedule> findAllByDateBetweenAndEmployee_WorkId(LocalDate start, LocalDate end, String workId);
     List<Schedule> findAllByDateBetween(LocalDate start, LocalDate end);
     Optional<Schedule> findFirstByDateAfterAndWorkStatus(LocalDate current, StatusEnum statusEnum);
+    Optional<Schedule> findByDateAndEmployee_WorkId(LocalDate hourDay, String workId);
 }

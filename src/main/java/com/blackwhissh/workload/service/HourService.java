@@ -34,16 +34,23 @@ public class HourService {
         LOGGER.info("Started get hours by schedule with ID: " + scheduleId);
         Schedule schedule = scheduleRepository.findById(scheduleId).orElseThrow(ScheduleNotFoundException::new);
         List<HourDTO> hourDTOList = new ArrayList<>();
-        schedule.getHours().forEach(hour -> hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd())));
+        schedule.getHours().forEach(hour -> hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists())));
         return hourDTOList;
     }
 
     public void generateMorningHours(Schedule schedule) {
-        Hour first = new Hour(LocalTime.of(8, 0), LocalTime.of(10, 0));
-        Hour second = new Hour(LocalTime.of(10, 0), LocalTime.of(12, 0));
-        Hour third = new Hour(LocalTime.of(12, 0), LocalTime.of(14, 0));
-        Hour fourth = new Hour(LocalTime.of(14, 0), LocalTime.of(16, 0));
-        List<Hour> hours = List.of(first, second, third, fourth);
+        Hour first = new Hour(LocalTime.of(8, 0), LocalTime.of(9, 0));
+        Hour second = new Hour(LocalTime.of(9, 0), LocalTime.of(10, 0));
+        Hour third = new Hour(LocalTime.of(10, 0), LocalTime.of(11, 0));
+        Hour fourth = new Hour(LocalTime.of(11, 0), LocalTime.of(12, 0));
+        Hour fifth = new Hour(LocalTime.of(12, 0), LocalTime.of(13, 0));
+        Hour sixth = new Hour(LocalTime.of(13, 0), LocalTime.of(14, 0));
+        Hour seventh = new Hour(LocalTime.of(14, 0), LocalTime.of(15, 0));
+        Hour eighth = new Hour(LocalTime.of(15, 0), LocalTime.of(16, 0));
+
+        List<Hour> hours = List.of(first, second, third, fourth, fifth, sixth, seventh, eighth);
+
+        hours.forEach(hour -> hour.setSchedule(schedule));
         if (schedule.getWorkStatus().toString().equalsIgnoreCase("work")) {
             hourRepository.saveAll(hours);
             schedule.setHours(hours);
@@ -51,11 +58,19 @@ public class HourService {
     }
 
     public void generateDayHours(Schedule schedule) {
-        Hour first = new Hour(LocalTime.of(16, 0), LocalTime.of(18, 0));
-        Hour second = new Hour(LocalTime.of(18, 0), LocalTime.of(20, 0));
-        Hour third = new Hour(LocalTime.of(20, 0), LocalTime.of(22, 0));
-        Hour fourth = new Hour(LocalTime.of(22, 0), LocalTime.of(0, 0));
-        List<Hour> hours = List.of(first, second, third, fourth);
+        Hour first = new Hour(LocalTime.of(16, 0), LocalTime.of(17, 0));
+        Hour second = new Hour(LocalTime.of(17, 0), LocalTime.of(18, 0));
+        Hour third = new Hour(LocalTime.of(18, 0), LocalTime.of(19, 0));
+        Hour fourth = new Hour(LocalTime.of(19, 0), LocalTime.of(20, 0));
+        Hour fifth = new Hour(LocalTime.of(20, 0), LocalTime.of(21, 0));
+        Hour sixth = new Hour(LocalTime.of(21, 0), LocalTime.of(22, 0));
+        Hour seventh = new Hour(LocalTime.of(22, 0), LocalTime.of(23, 0));
+        Hour eighth = new Hour(LocalTime.of(23, 0), LocalTime.of(0, 0));
+
+        List<Hour> hours = List.of(first, second, third, fourth, fifth, sixth, seventh, eighth);
+
+        hours.forEach(hour -> hour.setSchedule(schedule));
+
         if (schedule.getWorkStatus().toString().equalsIgnoreCase("work")) {
             hourRepository.saveAll(hours);
             schedule.setHours(hours);
@@ -63,11 +78,18 @@ public class HourService {
     }
 
     public void generateNightHours(Schedule schedule) {
-        Hour first = new Hour(LocalTime.of(0, 0), LocalTime.of(2, 0));
-        Hour second = new Hour(LocalTime.of(2, 0), LocalTime.of(4, 0));
-        Hour third = new Hour(LocalTime.of(4, 0), LocalTime.of(6, 0));
-        Hour fourth = new Hour(LocalTime.of(6, 0), LocalTime.of(8, 0));
-        List<Hour> hours = List.of(first, second, third, fourth);
+        Hour first = new Hour(LocalTime.of(0, 0), LocalTime.of(1, 0));
+        Hour second = new Hour(LocalTime.of(1, 0), LocalTime.of(2, 0));
+        Hour third = new Hour(LocalTime.of(2, 0), LocalTime.of(3, 0));
+        Hour fourth = new Hour(LocalTime.of(3, 0), LocalTime.of(4, 0));
+        Hour fifth = new Hour(LocalTime.of(4, 0), LocalTime.of(5, 0));
+        Hour sixth = new Hour(LocalTime.of(5, 0), LocalTime.of(6, 0));
+        Hour seventh = new Hour(LocalTime.of(6, 0), LocalTime.of(7, 0));
+        Hour eighth = new Hour(LocalTime.of(7, 0), LocalTime.of(8, 0));
+
+        List<Hour> hours = List.of(first, second, third, fourth, fifth, sixth, seventh, eighth);
+
+        hours.forEach(hour -> hour.setSchedule(schedule));
 
         if (schedule.getWorkStatus().toString().equalsIgnoreCase("work")) {
             for (Hour hour : hours) {
@@ -95,7 +117,7 @@ public class HourService {
         }
     }
 
-    //    public List<HourDTO> swapHour()
+    @Transactional
     public List<HourDTO> addNewHour(AddNewHourRequest request) {
         Schedule schedule = scheduleRepository.findById(request.scheduleId())
                 .orElseThrow(ScheduleNotFoundException::new);
@@ -109,7 +131,7 @@ public class HourService {
             scheduleRepository.save(schedule);
             List<HourDTO> hourDTOList = new ArrayList<>();
             for (Hour hour : hours) {
-                hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd()));
+                hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists()));
             }
             LOGGER.info("Add hour validated successfully");
             return hourDTOList;
