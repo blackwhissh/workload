@@ -4,10 +4,13 @@ import com.blackwhissh.workload.dto.EmployeeDTO;
 import com.blackwhissh.workload.dto.request.RegisterEmployeeRequest;
 import com.blackwhissh.workload.dto.response.RegisterEmployeeResponse;
 import com.blackwhissh.workload.entity.Employee;
+import com.blackwhissh.workload.entity.User;
+import com.blackwhissh.workload.entity.enums.RoleEnum;
 import com.blackwhissh.workload.entity.enums.ShiftEnum;
 import com.blackwhissh.workload.exceptions.list.EmployeeAlreadyExistsException;
 import com.blackwhissh.workload.exceptions.list.EmployeeNotFoundException;
 import com.blackwhissh.workload.repository.EmployeeRepository;
+import com.blackwhissh.workload.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +21,12 @@ public class EmployeeService {
     public static final Logger LOGGER = LoggerFactory.getLogger(EmployeeService.class);
     private final EmployeeRepository employeeRepository;
     private final ScheduleService scheduleService;
+    private final UserRepository userRepository;
 
-    public EmployeeService(EmployeeRepository employeeRepository, ScheduleService scheduleService) {
+    public EmployeeService(EmployeeRepository employeeRepository, ScheduleService scheduleService, UserRepository userRepository) {
         this.employeeRepository = employeeRepository;
         this.scheduleService = scheduleService;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -33,11 +38,19 @@ public class EmployeeService {
         }
         ShiftEnum shift = ShiftEnum.valueOf(request.shift().toUpperCase());
 
-        Employee employee = employeeRepository.save(new Employee(
+        User user = new User(true, RoleEnum.EMPLOYEE);
+        user.setEmail(request.email());
+
+        userRepository.save(user);
+
+        Employee employee = new Employee(
                 request.workId(),
                 shift,
                 request.set()
-        ));
+        );
+
+        employee.setUser(user);
+        employeeRepository.save(employee);
         LOGGER.info("employee registered successfully");
         scheduleService.generateSchedule(employee);
         return new RegisterEmployeeResponse(

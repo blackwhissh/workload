@@ -12,6 +12,8 @@ public class Employee {
     @SequenceGenerator(name = "employee_id", sequenceName = "employee_id", allocationSize = 1)
     @GeneratedValue(generator = "employee_id", strategy = GenerationType.SEQUENCE)
     private Integer id;
+    @OneToOne
+    private User user;
     private String workId;
     @Enumerated(value = EnumType.STRING)
     private ShiftEnum shift;
@@ -77,5 +79,13 @@ public class Employee {
 
     public void setScheduleList(List<Schedule> scheduleList) {
         this.scheduleList = scheduleList;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

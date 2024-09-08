@@ -1,6 +1,7 @@
 package com.blackwhissh.workload.exceptions;
 
 import com.blackwhissh.workload.exceptions.list.*;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -139,6 +140,46 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
         response.setMessage("Swap request already exists for this hour");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<Object> handleEntityNotFoundException(EntityNotFoundException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Entity not found");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RefreshTokenExpiredException.class)
+    public ResponseEntity<Object> handleRefreshTokenExpiredException(RefreshTokenExpiredException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Refresh token expired");
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(RefreshTokenNotFoundException.class)
+    public ResponseEntity<Object> handleRefreshTokenNotFoundException(RefreshTokenNotFoundException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Refresh token not found");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(GiftTimeConflictException.class)
+    public ResponseEntity<Object> handleGiftTimeConflictException(GiftTimeConflictException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Gift times conflict with each other");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(GiftNotFoundException.class)
+    public ResponseEntity<Object> handleGiftNotFoundException(GiftNotFoundException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Gift not found");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 

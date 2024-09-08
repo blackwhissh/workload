@@ -17,7 +17,8 @@ public class MapToDTOUtils {
                 hour.getId(),
                 hour.getStart(),
                 hour.getEnd(),
-                hour.getSwapExists()
+                hour.getSwapExists(),
+                hour.getGiftExists()
         );
     }
 

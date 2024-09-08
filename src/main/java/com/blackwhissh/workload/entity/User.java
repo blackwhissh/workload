@@ -1,7 +1,8 @@
 package com.blackwhissh.workload.entity;
 
-import com.blackwhissh.workload.utils.GeneratorUtils;
+import com.blackwhissh.workload.config.PasswordConfig;
 import com.blackwhissh.workload.entity.enums.RoleEnum;
+import com.blackwhissh.workload.utils.GeneratorUtils;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -13,71 +14,49 @@ public class User {
     @SequenceGenerator(name = "user_id_seq", allocationSize = 1)
     @GeneratedValue(generator = "user_id_seq", strategy = GenerationType.SEQUENCE)
     @Column(name = "user_id")
-    private Long userId;
-    @Column(name = "first_name", nullable = false)
-    private String firstName;
-    @Column(name = "last_name", nullable = false)
-    private String lastName;
-    @Column(name = "username", nullable = false)
-    private String username;
+    private Integer userId;
+    @Column(name = "email", nullable = false)
+    private String email;
     @Column(name = "password", nullable = false)
     private String password;
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
     @Column(name = "reg_date")
     private LocalDate registrationDate;
-    @Column(name = "multiplier")
-    private Double multiplier;
     @Enumerated(value = EnumType.STRING)
     private RoleEnum role;
     private String tempPass;
+
     public User() {
     }
 
-    public User(String firstName, String lastName, Boolean isActive, RoleEnum role) {
-        this.firstName = firstName;
+    public User(Boolean isActive, RoleEnum role) {
         this.role = role;
-        this.lastName = lastName;
         this.isActive = isActive;
         String generatedPassword = GeneratorUtils.generatePassword();
         this.tempPass = generatedPassword;
-        this.password = generatedPassword;
+        this.password = PasswordConfig.passwordEncoder().encode(generatedPassword);
+        this.registrationDate = LocalDate.now();
     }
 
     public User(RoleEnum roleEnum) {
         this.role = roleEnum;
     }
 
-    public Long getUserId() {
+    public Integer getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(Integer userId) {
         this.userId = userId;
     }
 
-    public String getFirstName() {
-        return firstName;
+    public String getEmail() {
+        return email;
     }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getPassword() {
@@ -103,8 +82,13 @@ public class User {
     public void setRole(RoleEnum role) {
         this.role = role;
     }
+
     public String getTempPass() {
         return tempPass;
+    }
+
+    public void setTempPass(String tempPass) {
+        this.tempPass = tempPass;
     }
 
     public LocalDate getRegistrationDate() {
@@ -113,17 +97,5 @@ public class User {
 
     public void setRegistrationDate(LocalDate registrationDate) {
         this.registrationDate = registrationDate;
-    }
-
-    public Double getMultiplier() {
-        return multiplier;
-    }
-
-    public void setMultiplier(Double multiplier) {
-        this.multiplier = multiplier;
-    }
-
-    public void setTempPass(String tempPass) {
-        this.tempPass = tempPass;
     }
 }

@@ -2,16 +2,17 @@ package com.blackwhissh.workload.service;
 
 import com.blackwhissh.workload.dto.EmployeeDTO;
 import com.blackwhissh.workload.dto.HourDTO;
-import com.blackwhissh.workload.dto.request.ScheduleByYearMonthAndWorkIdRequest;
 import com.blackwhissh.workload.dto.request.ScheduleByYearMonthRequest;
 import com.blackwhissh.workload.dto.response.ScheduleByYearMonthResponse;
 import com.blackwhissh.workload.entity.Employee;
+import com.blackwhissh.workload.entity.Hour;
 import com.blackwhissh.workload.entity.Schedule;
 import com.blackwhissh.workload.entity.enums.ShiftEnum;
 import com.blackwhissh.workload.entity.enums.StatusEnum;
 import com.blackwhissh.workload.exceptions.list.EmployeeNotFoundException;
 import com.blackwhissh.workload.exceptions.list.WrongMonthException;
 import com.blackwhissh.workload.repository.EmployeeRepository;
+import com.blackwhissh.workload.repository.HourRepository;
 import com.blackwhissh.workload.repository.ScheduleRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -22,18 +23,19 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 @Service
 public class ScheduleService {
     private final static Logger LOGGER = LoggerFactory.getLogger(ScheduleService.class);
     private final ScheduleRepository scheduleRepository;
     private final EmployeeRepository employeeRepository;
+    private final HourRepository hourRepository;
     private final HourService hourService;
 
-    public ScheduleService(ScheduleRepository scheduleRepository, EmployeeRepository employeeRepository, HourService hourService) {
+    public ScheduleService(ScheduleRepository scheduleRepository, EmployeeRepository employeeRepository, HourRepository hourRepository, HourService hourService) {
         this.scheduleRepository = scheduleRepository;
         this.employeeRepository = employeeRepository;
+        this.hourRepository = hourRepository;
         this.hourService = hourService;
     }
 
@@ -82,14 +84,17 @@ public class ScheduleService {
         scheduleRepository.saveAll(scheduleList);
     }
 
-    public List<ScheduleByYearMonthResponse> getScheduleByYearMonthAndWorkId(ScheduleByYearMonthAndWorkIdRequest request) {
-        if (request.month() > 12 || request.month() <= 0) throw new WrongMonthException();
-        Employee employee = employeeRepository.findByWorkId(request.workId()).orElseThrow(EmployeeNotFoundException::new);
-        LocalDate start = LocalDate.of(request.year(), request.month(), 1);
-        int lastDayOfMonth = YearMonth.of(request.year(), request.month()).atEndOfMonth().getDayOfMonth();
-        LocalDate end = LocalDate.of(request.year(), request.month(), lastDayOfMonth);
+    public List<ScheduleByYearMonthResponse> getScheduleByYearMonthAndWorkId(int year, int month, String workId) {
+        if (month > 12 || month <= 0) throw new WrongMonthException();
+        Employee employee = employeeRepository.findByWorkId(workId).orElseThrow(EmployeeNotFoundException::new);
+        LocalDate start = LocalDate.of(year, month, 1);
+        int lastDayOfMonth = YearMonth.of(year, month).atEndOfMonth().getDayOfMonth();
+        LocalDate end = LocalDate.of(year, month, lastDayOfMonth);
         List<ScheduleByYearMonthResponse> scheduleByYearMonthList = new ArrayList<>();
         List<Schedule> allByDateBetweenAndEmployeeWorkId = scheduleRepository.findAllByDateBetweenAndEmployee_WorkId(start, end, employee.getWorkId());
+        allByDateBetweenAndEmployeeWorkId.forEach(schedule -> {
+            schedule.setHours(hourRepository.findBySchedule(schedule));
+        });
         mapToScheduleDto(allByDateBetweenAndEmployeeWorkId, scheduleByYearMonthList);
         return scheduleByYearMonthList;
     }
@@ -111,7 +116,7 @@ public class ScheduleService {
         for (Schedule schedule : allByDateBetween) {
             List<HourDTO> hourDTOList = new ArrayList<>();
             schedule.getHours().forEach(hour ->
-                    hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists()))
+                    hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists(), hour.getGiftExists()))
             );
 
             EmployeeDTO employeeDTO = new EmployeeDTO(

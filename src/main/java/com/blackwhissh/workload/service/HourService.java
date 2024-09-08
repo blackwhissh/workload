@@ -34,7 +34,7 @@ public class HourService {
         LOGGER.info("Started get hours by schedule with ID: " + scheduleId);
         Schedule schedule = scheduleRepository.findById(scheduleId).orElseThrow(ScheduleNotFoundException::new);
         List<HourDTO> hourDTOList = new ArrayList<>();
-        schedule.getHours().forEach(hour -> hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists())));
+        schedule.getHours().forEach(hour -> hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists(), hour.getGiftExists())));
         return hourDTOList;
     }
 
@@ -122,7 +122,7 @@ public class HourService {
         Schedule schedule = scheduleRepository.findById(request.scheduleId())
                 .orElseThrow(ScheduleNotFoundException::new);
 
-        if (validateHour(schedule, request.start(), request.end())) {
+        if (validateHours(schedule, request.start(), request.end())) {
             double diff = Duration.between(request.start(), request.end()).toHours();
             schedule.setTotalHours(schedule.getTotalHours() + diff);
             List<Hour> hours = schedule.getHours();
@@ -131,7 +131,7 @@ public class HourService {
             scheduleRepository.save(schedule);
             List<HourDTO> hourDTOList = new ArrayList<>();
             for (Hour hour : hours) {
-                hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists()));
+                hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists(), hour.getGiftExists()));
             }
             LOGGER.info("Add hour validated successfully");
             return hourDTOList;
@@ -160,8 +160,8 @@ public class HourService {
         return monthHours;
     }
 
-    private boolean validateHour(Schedule schedule, LocalTime start, LocalTime end) {
-        LOGGER.info("Started hour validation");
+    public boolean validateHours(Schedule schedule, LocalTime start, LocalTime end) {
+        LOGGER.info("Started hours validation");
         return !checkHourOccupied(schedule, start, end)
                 && checkDailyHoursLimit(schedule, start, end)
                 && checkWeekHoursLimit(schedule, start, end)

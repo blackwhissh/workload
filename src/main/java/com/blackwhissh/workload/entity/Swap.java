@@ -23,8 +23,8 @@ public class Swap {
     private LocalDate publishDate;
     @Enumerated(EnumType.STRING)
     private RequestStatusEnum status;
-    private LocalTime start;
-    private LocalTime end;
+    private LocalTime targetStartTime;
+    private LocalTime targetEndTime;
 
     public Swap() {
     }
@@ -37,8 +37,8 @@ public class Swap {
         this.hour = hour;
         this.publishDate = publishDate;
         this.status = status;
-        this.start = start;
-        this.end = end;
+        this.targetStartTime = start;
+        this.targetEndTime = end;
     }
 
     public Swap(Employee publisher, Employee receiver, LocalDate hourDay, Hour hour, LocalDate publishDate, RequestStatusEnum status) {
@@ -120,18 +120,18 @@ public class Swap {
     }
 
     public LocalTime getEnd() {
-        return end;
+        return targetEndTime;
     }
 
     public void setEnd(LocalTime end) {
-        this.end = end;
+        this.targetEndTime = end;
     }
 
     public LocalTime getStart() {
-        return start;
+        return targetStartTime;
     }
 
     public void setStart(LocalTime start) {
-        this.start = start;
+        this.targetStartTime = start;
     }
 }

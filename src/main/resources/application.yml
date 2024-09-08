@@ -2,7 +2,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -14,3 +14,6 @@ server:
   port: 8081
   error:
     include-message: always
+
+jwt:
+  key: "thisIsJwtSignatureKeyblahbluhblihbleh1283y9hdsakjhjk3hjkshaf72gulhgjhdsjlhh4khslkdfhl2asdshf3jguihgbdsjgh2d"
