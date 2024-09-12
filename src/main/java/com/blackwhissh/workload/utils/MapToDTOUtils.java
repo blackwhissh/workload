@@ -27,16 +27,18 @@ public class MapToDTOUtils {
         if (swap.getReceiver() != null) {
             receiverWorkId = swap.getReceiver().getWorkId();
         }
+        List<HourDTO> hourDTOList = new ArrayList<>();
+        for (Hour hour : swap.getHours()) {
+            hourDTOList.add(mapHourToDTO(hour));
+        }
         return new SwapDTO(
                 swap.getSwapId(),
                 swap.getPublisher().getWorkId(),
                 receiverWorkId,
-                swap.getHourDay(),
-                mapHourToDTO(swap.getHour()),
                 swap.getPublishDate(),
+                hourDTOList,
                 swap.getStatus(),
-                swap.getStart(),
-                swap.getEnd()
+                swap.getTargetDate()
         );
     }
 

@@ -30,11 +30,13 @@ public class HourService {
         this.hourRepository = hourRepository;
     }
 
+    // FIXME: 9/8/2024 Fix schedule and hour relationship
     public List<HourDTO> getHoursByScheduleId(Integer scheduleId) {
         LOGGER.info("Started get hours by schedule with ID: " + scheduleId);
         Schedule schedule = scheduleRepository.findById(scheduleId).orElseThrow(ScheduleNotFoundException::new);
+        List<Hour> bySchedule = hourRepository.findBySchedule(schedule);
         List<HourDTO> hourDTOList = new ArrayList<>();
-        schedule.getHours().forEach(hour -> hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists(), hour.getGiftExists())));
+        bySchedule.forEach(hour -> hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists(), hour.getGiftExists())));
         return hourDTOList;
     }
 
@@ -217,12 +219,15 @@ public class HourService {
     private boolean checkNextScheduleHour(Schedule schedule, LocalTime end) {
         boolean result = true;
         LOGGER.info("Checking gap between schedules");
-        Optional<Schedule> nextScheduleOptional = scheduleRepository.findFirstByDateAfterAndWorkStatus(schedule.getDate(), StatusEnum.WORK);
+        Optional<Schedule> nextScheduleOptional = scheduleRepository.findFirstByEmployee_WorkIdAndDateAfterAndWorkStatus(schedule.getEmployee().getWorkId(),schedule.getDate(), StatusEnum.WORK);
         if (nextScheduleOptional.isPresent()) {
             Schedule nextSchedule = nextScheduleOptional.get();
             LocalDateTime currentDateTime = LocalDateTime.of(schedule.getDate().getYear(), schedule.getDate().getMonthValue(), schedule.getDate().getDayOfMonth(), end.getHour(), end.getMinute());
+            System.out.println(currentDateTime);
             LocalDateTime nextDateTime = LocalDateTime.of(nextSchedule.getDate().getYear(), nextSchedule.getDate().getMonthValue(), nextSchedule.getDate().getDayOfMonth(), nextSchedule.getHours().get(0).getStart().getHour(), nextSchedule.getHours().get(0).getStart().getMinute());
+            System.out.println(nextDateTime);
             double diff = Duration.between(currentDateTime, nextDateTime).toHours();
+            System.out.println(diff);
             if (diff < 12) {
                 LOGGER.error("Gap is less than 12");
                 throw new ScheduleGapException();

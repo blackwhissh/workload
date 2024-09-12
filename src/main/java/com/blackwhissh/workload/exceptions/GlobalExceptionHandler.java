@@ -183,4 +183,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(GiftReceivedBySameUserException.class)
+    public ResponseEntity<Object> handleGiftReceivedBySameUserException(GiftReceivedBySameUserException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Gift cannot be received by same user");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
 }

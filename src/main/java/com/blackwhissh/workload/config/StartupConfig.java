@@ -8,6 +8,7 @@ import com.blackwhissh.workload.repository.EmployeeRepository;
 import com.blackwhissh.workload.repository.UserRepository;
 import com.blackwhissh.workload.service.EmployeeService;
 import jakarta.annotation.PostConstruct;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -46,8 +47,11 @@ public class StartupConfig {
         RegisterEmployeeRequest request1= new RegisterEmployeeRequest("morning", "emp1", "001", 1);
         RegisterEmployeeRequest request2= new RegisterEmployeeRequest("morning", "emp2", "002", 1);
         RegisterEmployeeRequest request3= new RegisterEmployeeRequest("morning", "emp3", "003", 2);
+        RegisterEmployeeRequest request4= new RegisterEmployeeRequest("night", "emp4", "004", 1);
+
         employeeService.registerEmployee(request1);
         employeeService.registerEmployee(request2);
         employeeService.registerEmployee(request3);
+        employeeService.registerEmployee(request4);
     }
 }

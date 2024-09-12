@@ -19,7 +19,7 @@ public class Schedule {
     @Enumerated(value = EnumType.STRING)
     private StatusEnum workStatus;
     private LocalDate date;
-    @OneToMany
+    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private List<Hour> hours;
     private Double totalHours;
 

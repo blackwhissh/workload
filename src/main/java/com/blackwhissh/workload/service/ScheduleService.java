@@ -107,7 +107,9 @@ public class ScheduleService {
 
         List<Schedule> allByDateBetween = scheduleRepository.findAllByDateBetween(start, end);
         List<ScheduleByYearMonthResponse> scheduleByYearMonthList = new ArrayList<>();
-
+        allByDateBetween.forEach(schedule -> {
+            schedule.setHours(hourRepository.findBySchedule(schedule));
+        });
         mapToScheduleDto(allByDateBetween, scheduleByYearMonthList);
         return scheduleByYearMonthList;
     }

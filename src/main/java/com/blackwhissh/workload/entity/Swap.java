@@ -4,50 +4,29 @@ import com.blackwhissh.workload.entity.enums.RequestStatusEnum;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 @Entity
 @Table(name = "swap")
 public class Swap {
     @Id
-    @SequenceGenerator(name = "swap_id", sequenceName = "swap_id", allocationSize = 1)
-    @GeneratedValue(generator = "swap_id", strategy = GenerationType.SEQUENCE)
+    @SequenceGenerator(name = "gift_id", sequenceName = "gift_id", allocationSize = 1)
+    @GeneratedValue(generator = "gift_id", strategy = GenerationType.SEQUENCE)
     private Integer swapId;
     @ManyToOne
     private Employee publisher;
     @ManyToOne
     private Employee receiver;
-    private LocalDate hourDay;
-    @OneToOne
-    private Hour hour;
+    @ManyToMany
+    private List<Hour> hours;
     private LocalDate publishDate;
     @Enumerated(EnumType.STRING)
     private RequestStatusEnum status;
-    private LocalTime targetStartTime;
-    private LocalTime targetEndTime;
+    private LocalDateTime targetDate;
 
     public Swap() {
-    }
-
-    public Swap(Employee publisher, LocalDate hourDay, Hour hour,
-                LocalDate publishDate, RequestStatusEnum status,
-                LocalTime start, LocalTime end) {
-        this.publisher = publisher;
-        this.hourDay = hourDay;
-        this.hour = hour;
-        this.publishDate = publishDate;
-        this.status = status;
-        this.targetStartTime = start;
-        this.targetEndTime = end;
-    }
-
-    public Swap(Employee publisher, Employee receiver, LocalDate hourDay, Hour hour, LocalDate publishDate, RequestStatusEnum status) {
-        this.publisher = publisher;
-        this.receiver = receiver;
-        this.hourDay = hourDay;
-        this.hour = hour;
-        this.publishDate = publishDate;
-        this.status = status;
     }
 
     public Integer getSwapId() {
@@ -74,12 +53,12 @@ public class Swap {
         this.receiver = receiver;
     }
 
-    public Hour getHour() {
-        return hour;
+    public List<Hour> getHours() {
+        return hours;
     }
 
-    public void setHour(Hour hour) {
-        this.hour = hour;
+    public void setHours(List<Hour> hours) {
+        this.hours = hours;
     }
 
     public LocalDate getPublishDate() {
@@ -98,40 +77,11 @@ public class Swap {
         this.status = status;
     }
 
-    public LocalDate getHourDay() {
-        return hourDay;
+    public LocalDateTime getTargetDate() {
+        return targetDate;
     }
 
-    public void setHourDay(LocalDate hourDay) {
-        this.hourDay = hourDay;
-    }
-
-    @Override
-    public String toString() {
-        return "SwapRequest{" +
-                "swapRequestId=" + swapId +
-                ", publisher=" + publisher +
-                ", receiver=" + receiver +
-                ", hourDay=" + hourDay +
-                ", hour=" + hour +
-                ", publishDate=" + publishDate +
-                ", status=" + status +
-                '}';
-    }
-
-    public LocalTime getEnd() {
-        return targetEndTime;
-    }
-
-    public void setEnd(LocalTime end) {
-        this.targetEndTime = end;
-    }
-
-    public LocalTime getStart() {
-        return targetStartTime;
-    }
-
-    public void setStart(LocalTime start) {
-        this.targetStartTime = start;
+    public void setTargetDate(LocalDateTime targetDate) {
+        this.targetDate = targetDate;
     }
 }

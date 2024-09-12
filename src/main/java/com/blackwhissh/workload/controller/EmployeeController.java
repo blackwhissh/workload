@@ -5,6 +5,7 @@ import com.blackwhissh.workload.dto.response.RegisterEmployeeResponse;
 import com.blackwhissh.workload.service.EmployeeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,8 +17,9 @@ public class EmployeeController {
     public EmployeeController(EmployeeService employeeService) {
         this.employeeService = employeeService;
     }
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @PostMapping("/register")
-    private ResponseEntity<RegisterEmployeeResponse> registerEmployee(@NonNull @RequestBody RegisterEmployeeRequest request){
+    public ResponseEntity<RegisterEmployeeResponse> registerEmployee(@NonNull @RequestBody RegisterEmployeeRequest request){
         return ResponseEntity.ok(employeeService.registerEmployee(request));
     }
 }

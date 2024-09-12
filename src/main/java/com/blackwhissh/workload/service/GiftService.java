@@ -39,7 +39,7 @@ public class GiftService {
         this.scheduleRepository = scheduleRepository;
         this.hourService = hourService;
     }
-
+    @Transactional
     public GiftDTO publishGift(String workId, List<Integer> hourIdList) {
         LOGGER.info("Started to publish gift");
         System.out.println(workId);
@@ -110,10 +110,14 @@ public class GiftService {
         }
         return false;
     }
-
+    @Transactional
     public boolean receiveGift(String workId, int giftId) {
         LOGGER.info("Started receiving gift");
         Gift gift = giftRepository.findByGiftIdAndStatus(giftId, RequestStatusEnum.ACTIVE).orElseThrow(GiftNotFoundException::new);
+        if (gift.getPublisher().getWorkId().equals(workId)) {
+            LOGGER.error("Gift cannot be received by same user");
+            throw new GiftReceivedBySameUserException();
+        }
         LocalDate giftDate = gift.getGiftDate();
         Schedule schedule = scheduleRepository.findByDateAndEmployee_WorkId(giftDate, workId).orElseThrow(ScheduleNotFoundException::new);
         LocalTime start = gift.getHours().get(0).getStart();
@@ -167,6 +171,14 @@ public class GiftService {
         }
         LOGGER.error("Error during validation");
         return false;
+    }
+
+    public void rejectGift(int giftId) {
+        LOGGER.info("Started rejecting gift with ID: " + giftId);
+        Gift gift = giftRepository.findByGiftIdAndStatus(giftId, RequestStatusEnum.IN_PROGRESS)
+                .orElseThrow(GiftNotFoundException::new);
+        gift.setStatus(RequestStatusEnum.REJECTED);
+        giftRepository.save(gift);
     }
 
     public List<GiftDTO> getGiftsByWorkId(String workId) {

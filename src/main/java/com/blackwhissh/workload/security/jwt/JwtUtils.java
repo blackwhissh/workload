@@ -21,15 +21,17 @@ public class JwtUtils {
     @Value("${jwt.key}")
     private String jwtSecret;
 
-    public String generateJwtToken(String username, RoleEnum role, String workId) {
+    public String generateJwtToken(String username, RoleEnum roleEnum, String workId) {
         Instant now = Instant.now();
-        String jwtExpirationMs = "3600000";
+        String jwtExpirationMs = "36000000";
+        String role = "ROLE_" + roleEnum.toString();
         Instant expirationTime = now.plusMillis(Long.parseLong(jwtExpirationMs));
         Date expirationDate = Date.from(expirationTime);
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .claim("workId", workId)
+                .claim("role", role)
                 .setExpiration(expirationDate)
                 .signWith(key(), SignatureAlgorithm.HS256)
                 .compact();

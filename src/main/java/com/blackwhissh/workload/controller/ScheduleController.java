@@ -6,6 +6,8 @@ import com.blackwhissh.workload.dto.response.ScheduleByYearMonthResponse;
 import com.blackwhissh.workload.security.jwt.JwtUtils;
 import com.blackwhissh.workload.service.ScheduleService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,18 +23,20 @@ public class ScheduleController {
         this.scheduleService = scheduleService;
         this.jwtUtils = jwtUtils;
     }
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @PostMapping("/get-by-workId")
-    private ResponseEntity<List<ScheduleByYearMonthResponse>> getScheduleByYearMonthAndWorkId(@RequestBody ScheduleByYearMonthAndWorkIdRequest request){
+    public ResponseEntity<List<ScheduleByYearMonthResponse>> getScheduleByYearMonthAndWorkId(@RequestBody ScheduleByYearMonthAndWorkIdRequest request){
         return ResponseEntity.ok(scheduleService.getScheduleByYearMonthAndWorkId(request.year(), request.month(), request.workId()));
     }
     @PostMapping("/current")
-    private ResponseEntity<List<ScheduleByYearMonthResponse>> getCurrentEmployeeSchedule(@RequestHeader("Authorization") String jwt,
+    public ResponseEntity<List<ScheduleByYearMonthResponse>> getCurrentEmployeeSchedule(@RequestHeader("Authorization") String jwt,
                                                                                          @RequestBody ScheduleByYearMonthRequest request) {
         jwt = jwt.substring(7);
         return ResponseEntity.ok(scheduleService.getScheduleByYearMonthAndWorkId(request.year(), request.month(), jwtUtils.getWorkIdFromJwtToken(jwt)));
     }
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @PostMapping("/all-by-month")
-    private ResponseEntity<List<ScheduleByYearMonthResponse>> getScheduleByYearMonth(@RequestBody ScheduleByYearMonthRequest request){
+    public ResponseEntity<List<ScheduleByYearMonthResponse>> getScheduleByYearMonth(@RequestBody ScheduleByYearMonthRequest request){
         return ResponseEntity.ok(scheduleService.getScheduleByYearMonth(request));
     }
 }
