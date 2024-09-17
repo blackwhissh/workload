@@ -119,11 +119,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(FirstOrLastHourSwapException.class)
-    public ResponseEntity<Object> handleFirstOrLastHourSwapException(FirstOrLastHourSwapException e) {
+    @ExceptionHandler(FirstOrLastHourTransferException.class)
+    public ResponseEntity<Object> handleFirstOrLastHourTransferException(FirstOrLastHourTransferException e) {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
-        response.setMessage("First or last hour of a day can not be swapped");
+        response.setMessage("First or last hour of a day can not be left alone");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
@@ -132,6 +132,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
         response.setMessage("Error during swapping hour");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HourGiftException.class)
+    public ResponseEntity<Object> handleHourGiftException(HourGiftException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Error during gifting hour");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
@@ -188,6 +196,94 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ExceptionResponse response = new ExceptionResponse();
         response.setDateTime(LocalDateTime.now());
         response.setMessage("Gift cannot be received by same user");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MonthlyMinimumLimitException.class)
+    public ResponseEntity<Object> handleMonthlyMinimumLimitException(MonthlyMinimumLimitException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Monthly minimum limit is 40 hours");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(NextMonthSwapException.class)
+    public ResponseEntity<Object> handleNextMonthSwapException(NextMonthSwapException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Error during next month swap");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(TransferCounterException.class)
+    public ResponseEntity<Object> handleTransferCounterException(TransferCounterException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Hour can not be swapped/gifted more than twice");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SwapNotFoundException.class)
+    public ResponseEntity<Object> handleSwapNotFoundException(SwapNotFoundException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Swap not found");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SwapReceivedBySameUserException.class)
+    public ResponseEntity<Object> handleSwapReceivedBySameUserException(SwapReceivedBySameUserException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Swap can not be received by same user");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SwapTimeConflictException.class)
+    public ResponseEntity<Object> handleSwapTimeConflictException(SwapTimeConflictException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Gift times conflict with each other");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(FirstOrLastHourCannotBeTransferredException.class)
+    public ResponseEntity<Object> handleFirstOrLastHourCannotBeTransferredException(FirstOrLastHourCannotBeTransferredException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("First or last hour can not be swapped");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ScheduleIsEmptyException.class)
+    public ResponseEntity<Object> handleScheduleIsEmptyException(ScheduleIsEmptyException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Schedule is empty");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(NoNeededHoursPresentException.class)
+    public ResponseEntity<Object> handleNoNeededHoursPresentException(NoNeededHoursPresentException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("No needed hours are present in a schedule");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(WrongHourAmountException.class)
+    public ResponseEntity<Object> handleWrongHourAmountException(WrongHourAmountException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Wrong amount of hours are provided");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HoursAreNotChainedException.class)
+    public ResponseEntity<Object> handleHoursAreNotChainedException(HoursAreNotChainedException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Hours are not chained!");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 

@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GiftService {
@@ -42,27 +43,29 @@ public class GiftService {
     @Transactional
     public GiftDTO publishGift(String workId, List<Integer> hourIdList) {
         LOGGER.info("Started to publish gift");
-        System.out.println(workId);
+        if (!hourService.checkHoursAmount(hourIdList)) {
+            throw new WrongHourAmountException();
+        }
         Employee publisher = employeeRepository.findByWorkId(workId)
                 .orElseThrow(EmployeeNotFoundException::new);
 
-        List<Hour> hourList = new ArrayList<>();
-        if (!isValidMinimumLimit(hourIdList.get(0), hourIdList.size())) {
-            LOGGER.error("Can not be gifted, monthly hours will be less than 40");
-        }
-        LOGGER.info("Started searching hours");
-        LocalDate giftDate = LocalDate.now();
-        for (int hourId : hourIdList) {
-            Hour hour = hourRepository.findById(hourId).orElseThrow();
-            if (hour.getGiftExists() || hour.getSwapExists()) {
-                LOGGER.error("One or more hour is already is being gifted/swapped");
-                throw new HourSwapException();
-            }
-            giftDate = hour.getSchedule().getDate();
-            hour.setGiftExists(true);
-            hourList.add(hour);
+        if (!hourService.checkFirstOrLastHour(hourIdList)){
+            throw new FirstOrLastHourTransferException();
         }
 
+        if (!hourService.checkHoursChain(hourIdList)) {
+            throw new HoursAreNotChainedException();
+        }
+
+        List<Hour> hourList = new ArrayList<>();
+        if (!hourService.isValidMinimumLimit(hourIdList.get(0), hourIdList.size())) {
+            LOGGER.error("Can not be gifted, monthly hours will be less than 40");
+            throw new MonthlyMinimumLimitException();
+        }
+        LOGGER.info("Started searching hours");
+        checkAndSetGift(hourIdList, hourList);
+
+        LocalDate giftDate = hourList.get(0).getSchedule().getDate();
         Gift saved = giftRepository.save(new Gift(
                 publisher,
                 hourList,
@@ -72,6 +75,18 @@ public class GiftService {
         ));
         LOGGER.info("Gift saved successfully");
         return MapToDTOUtils.mapGiftToDTO(saved);
+    }
+
+    private void checkAndSetGift(List<Integer> hourIdList, List<Hour> hourList) {
+        for (int hourId : hourIdList) {
+            Hour hour = hourRepository.findById(hourId).orElseThrow();
+            if (hour.getGiftExists() || hour.getSwapExists()) {
+                LOGGER.error("One or more hour is already is being gifted/swapped");
+                throw new HourGiftException();
+            }
+            hour.setGiftExists(true);
+            hourList.add(hour);
+        }
     }
 
     public List<GiftDTO> getAllActiveGifts() {
@@ -110,20 +125,32 @@ public class GiftService {
         }
         return false;
     }
+
     @Transactional
-    public boolean receiveGift(String workId, int giftId) {
+    public boolean receiveGift(String receiverWorkId, int giftId) {
         LOGGER.info("Started receiving gift");
         Gift gift = giftRepository.findByGiftIdAndStatus(giftId, RequestStatusEnum.ACTIVE).orElseThrow(GiftNotFoundException::new);
-        if (gift.getPublisher().getWorkId().equals(workId)) {
+        if (gift.getPublisher().getWorkId().equals(receiverWorkId)) {
             LOGGER.error("Gift cannot be received by same user");
             throw new GiftReceivedBySameUserException();
         }
         LocalDate giftDate = gift.getGiftDate();
-        Schedule schedule = scheduleRepository.findByDateAndEmployee_WorkId(giftDate, workId).orElseThrow(ScheduleNotFoundException::new);
-        LocalTime start = gift.getHours().get(0).getStart();
-        LocalTime end = gift.getHours().get(gift.getHours().size() - 1).getEnd();
-        if (hourService.validateHours(schedule, start, end) && validateGifts(workId, start, end, giftDate)) {
-            Employee employee = employeeRepository.findByWorkId(workId).orElseThrow(EmployeeNotFoundException::new);
+        Schedule schedule = scheduleRepository.findByDateAndEmployee_WorkId(giftDate, receiverWorkId).orElseThrow(ScheduleNotFoundException::new);
+        Hour firstHour = gift.getHours().get(0);
+        Hour lastHour = gift.getHours().get(gift.getHours().size() - 1);
+        LocalTime start = firstHour.getStart();
+        LocalTime end = lastHour.getEnd();
+
+        // Fetch previous and next hours
+        Hour previousHour = hourService.findLastHourBefore(schedule, start);
+        Hour nextHour = hourService.findFirstHourAfter(schedule, end);
+
+        // Validate gaps
+        boolean validPreviousGap = (previousHour == null) || hourService.checkPreviousHourGap(firstHour, previousHour);
+        boolean validNextGap = (nextHour == null) || hourService.checkNextHourGap(lastHour, nextHour);
+
+        if (validPreviousGap && validNextGap && hourService.validateHours(schedule, start, end) && validateExistingGifts(receiverWorkId, start, end, giftDate)) {
+            Employee employee = employeeRepository.findByWorkId(receiverWorkId).orElseThrow(EmployeeNotFoundException::new);
             gift.setReceiver(employee);
             gift.setStatus(RequestStatusEnum.IN_PROGRESS);
             giftRepository.save(gift);
@@ -131,6 +158,7 @@ public class GiftService {
         }
         return false;
     }
+
     @Transactional
     public boolean acceptGift(int giftId) {
         LOGGER.info("Started accepting gift with ID: " + giftId);
@@ -147,7 +175,6 @@ public class GiftService {
             gift.setStatus(RequestStatusEnum.OK);
             giftRepository.save(gift);
 
-            // Transfer hours from publisher to receiver
             for (Hour hour : gift.getHours()) {
                 hour.setGiftExists(false);
                 publisherSchedule.getHours().remove(hour);
@@ -155,7 +182,6 @@ public class GiftService {
             }
             hourRepository.saveAll(gift.getHours());
 
-            // Update total hours and status
             publisherSchedule.setTotalHours(publisherSchedule.getTotalHours() - gift.getHours().size());
             if (publisherSchedule.getTotalHours() == 0) {
                 publisherSchedule.setWorkStatus(StatusEnum.REST);
@@ -164,6 +190,7 @@ public class GiftService {
 
             receiverSchedule.setTotalHours(receiverSchedule.getTotalHours() + gift.getHours().size());
             receiverSchedule.setWorkStatus(StatusEnum.WORK);
+
             scheduleRepository.save(receiverSchedule);
 
             LOGGER.info("Gift has been saved and hours transferred successfully");
@@ -190,16 +217,10 @@ public class GiftService {
         return allGiftDTO;
     }
 
-    public boolean isValidMinimumLimit(int hourId, int hourAmount) {
-        LOGGER.info("Validating monthly minimum limit");
-        Hour hour = hourRepository.findById(hourId).orElseThrow();
-        double monthHours = hourService.getMonthHours(hour.getSchedule());
-        return monthHours - hourAmount >= 40;
-    }
 
-    public boolean validateGifts(String workId, LocalTime start, LocalTime end, LocalDate giftDate) {
+    public boolean validateExistingGifts(String receiverWorkId, LocalTime start, LocalTime end, LocalDate giftDate) {
         LOGGER.info("Validating against existing gifts");
-        List<Gift> existingGifts = giftRepository.findByReceiver_WorkIdAndStatus(workId, RequestStatusEnum.IN_PROGRESS);
+        List<Gift> existingGifts = giftRepository.findByReceiver_WorkIdAndStatus(receiverWorkId, RequestStatusEnum.IN_PROGRESS);
         for (Gift existingGift : existingGifts) {
             if (existingGift.getGiftDate().isEqual(giftDate)) {
                 LocalTime existingStart = existingGift.getHours().get(0).getStart();
@@ -212,6 +233,5 @@ public class GiftService {
         }
         return true;
     }
-
 
 }

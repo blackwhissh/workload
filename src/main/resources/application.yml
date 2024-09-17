@@ -14,6 +14,6 @@ server:
   port: 8081
   error:
     include-message: always
-
+jakarta:
 jwt:
   key: "thisIsJwtSignatureKeyblahbluhblihbleh1283y9hdsakjhjk3hjkshaf72gulhgjhdsjlhh4khslkdfhl2asdshf3jguihgbdsjgh2d"

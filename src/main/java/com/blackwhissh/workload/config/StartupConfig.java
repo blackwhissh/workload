@@ -48,10 +48,12 @@ public class StartupConfig {
         RegisterEmployeeRequest request2= new RegisterEmployeeRequest("morning", "emp2", "002", 1);
         RegisterEmployeeRequest request3= new RegisterEmployeeRequest("morning", "emp3", "003", 2);
         RegisterEmployeeRequest request4= new RegisterEmployeeRequest("night", "emp4", "004", 1);
+        RegisterEmployeeRequest request5= new RegisterEmployeeRequest("day", "emp5", "005", 1);
 
         employeeService.registerEmployee(request1);
         employeeService.registerEmployee(request2);
         employeeService.registerEmployee(request3);
         employeeService.registerEmployee(request4);
+        employeeService.registerEmployee(request5);
     }
 }

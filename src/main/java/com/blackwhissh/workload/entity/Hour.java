@@ -84,4 +84,6 @@ public class Hour {
     public void setGiftExists(Boolean giftExists) {
         this.giftExists = giftExists;
     }
+
+
 }

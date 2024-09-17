@@ -2,6 +2,7 @@ package com.blackwhissh.workload.service;
 
 import com.blackwhissh.workload.dto.HourDTO;
 import com.blackwhissh.workload.dto.request.AddNewHourRequest;
+import com.blackwhissh.workload.entity.Gift;
 import com.blackwhissh.workload.entity.Hour;
 import com.blackwhissh.workload.entity.Schedule;
 import com.blackwhissh.workload.entity.enums.StatusEnum;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -118,7 +120,7 @@ public class HourService {
             LOGGER.info("Hour with ID: " + hourId + " removed successfully!");
         }
     }
-
+    //TODO remove validation for this
     @Transactional
     public List<HourDTO> addNewHour(AddNewHourRequest request) {
         Schedule schedule = scheduleRepository.findById(request.scheduleId())
@@ -162,13 +164,50 @@ public class HourService {
         return monthHours;
     }
 
+    public boolean isValidMinimumLimit(int hourId, int hourAmount) {
+        LOGGER.info("Validating monthly minimum limit");
+        Hour hour = hourRepository.findById(hourId).orElseThrow();
+        double monthHours = getMonthHours(hour.getSchedule());
+        return monthHours - hourAmount >= 40;
+    }
+
+    public boolean checkNextMonthRequest(LocalDate targetDate) {
+        LOGGER.info("Validating if request is made after 20:15 of month's last day");
+        LocalDateTime publishDateTime = LocalDateTime.now();
+        if (publishDateTime.toLocalDate().plusMonths(1).getMonthValue() != targetDate.getMonthValue()) {
+            LOGGER.error("Target date is not next month");
+            return false;
+        }
+        if (publishDateTime.toLocalTime().isBefore(LocalTime.of(20, 14, 59))) {
+            LOGGER.error("Publish time is before 20:15");
+            return false;
+        }
+
+        return true;
+    }
+
+    public static void changeHours(Schedule receiverSchedule, Schedule publisherSchedule, HourRepository hourRepository, List<Hour> hours, ScheduleRepository scheduleRepository, Gift gift) {
+        hourRepository.saveAll(hours);
+
+        publisherSchedule.setTotalHours(publisherSchedule.getTotalHours() - hours.size());
+        if (publisherSchedule.getTotalHours() == 0) {
+            publisherSchedule.setWorkStatus(StatusEnum.REST);
+        }
+        scheduleRepository.save(publisherSchedule);
+
+        receiverSchedule.setTotalHours(receiverSchedule.getTotalHours() + hours.size());
+        receiverSchedule.setWorkStatus(StatusEnum.WORK);
+        scheduleRepository.save(receiverSchedule);
+    }
+
+
+
     public boolean validateHours(Schedule schedule, LocalTime start, LocalTime end) {
         LOGGER.info("Started hours validation");
         return !checkHourOccupied(schedule, start, end)
                 && checkDailyHoursLimit(schedule, start, end)
                 && checkWeekHoursLimit(schedule, start, end)
-                && checkMonthlyHoursLimit(schedule, start, end)
-                && checkNextScheduleHour(schedule, end);
+                && checkMonthlyHoursLimit(schedule, start, end);
     }
 
     private boolean checkHourOccupied(Schedule schedule, LocalTime start, LocalTime end) {
@@ -216,27 +255,6 @@ public class HourService {
         return true;
     }
 
-    private boolean checkNextScheduleHour(Schedule schedule, LocalTime end) {
-        boolean result = true;
-        LOGGER.info("Checking gap between schedules");
-        Optional<Schedule> nextScheduleOptional = scheduleRepository.findFirstByEmployee_WorkIdAndDateAfterAndWorkStatus(schedule.getEmployee().getWorkId(),schedule.getDate(), StatusEnum.WORK);
-        if (nextScheduleOptional.isPresent()) {
-            Schedule nextSchedule = nextScheduleOptional.get();
-            LocalDateTime currentDateTime = LocalDateTime.of(schedule.getDate().getYear(), schedule.getDate().getMonthValue(), schedule.getDate().getDayOfMonth(), end.getHour(), end.getMinute());
-            System.out.println(currentDateTime);
-            LocalDateTime nextDateTime = LocalDateTime.of(nextSchedule.getDate().getYear(), nextSchedule.getDate().getMonthValue(), nextSchedule.getDate().getDayOfMonth(), nextSchedule.getHours().get(0).getStart().getHour(), nextSchedule.getHours().get(0).getStart().getMinute());
-            System.out.println(nextDateTime);
-            double diff = Duration.between(currentDateTime, nextDateTime).toHours();
-            System.out.println(diff);
-            if (diff < 12) {
-                LOGGER.error("Gap is less than 12");
-                throw new ScheduleGapException();
-            }
-        }
-
-        return result;
-    }
-
     private List<Schedule> getMonthlySchedule(Schedule schedule) {
         LocalDate startOfMonth = schedule.getDate().with(TemporalAdjusters.firstDayOfMonth());
         LocalDate endOfMonth = schedule.getDate().with(TemporalAdjusters.lastDayOfMonth());
@@ -248,4 +266,115 @@ public class HourService {
         LocalDate endOfWeek = startOfWeek.plusDays(6);
         return scheduleRepository.findAllByDateBetweenAndEmployee_WorkId(startOfWeek, endOfWeek, schedule.getEmployee().getWorkId());
     }
+
+    public boolean checkNextHourGap(Hour hourToAddEnd, Hour nextHour) {
+        LOGGER.info("Checking gap between current and next hour");
+        LocalDate hourToAddDate = hourToAddEnd.getSchedule().getDate();
+        LocalTime hourToAddTime = hourToAddEnd.getEnd();
+        LocalDateTime hourToAddDateTime = LocalDateTime.of(hourToAddDate, hourToAddTime);
+
+        LocalDate nextHourDate = nextHour.getSchedule().getDate();
+        LocalTime nextHourTime = nextHour.getStart();
+        LocalDateTime nextHourDateTime = LocalDateTime.of(nextHourDate, nextHourTime);
+        long hours = Duration.between(hourToAddDateTime, nextHourDateTime.minusHours(1)).toHours();
+        return getDifference(hours);
+    }
+
+    private boolean getDifference(long hours) {
+        LOGGER.info("Duration between hours is - " + hours);
+
+        if (hours < 0) {
+            LOGGER.error("Hours overlap");
+            return false;
+        } else if (hours == 0) {
+            return true;
+        } else if (hours < 12) {
+            LOGGER.error("Gap is less than 12");
+            return false;
+        }
+        return true;
+    }
+
+    public boolean checkPreviousHourGap(Hour hourToAddStart, Hour previousHour) {
+        LOGGER.info("Checking gap between current and previous hour");
+        LocalDate hourToAddDate = hourToAddStart.getSchedule().getDate();
+        LocalTime hourToAddTime = hourToAddStart.getStart();
+        LocalDateTime hourToAddDateTime = LocalDateTime.of(hourToAddDate, hourToAddTime);
+
+        LocalDate previousHourDate = previousHour.getSchedule().getDate();
+        LocalTime previousHourTime = previousHour.getEnd();
+        LocalDateTime previousHourDateTime = LocalDateTime.of(previousHourDate, previousHourTime);
+        long hours = Duration.between(previousHourDateTime, hourToAddDateTime).toHours();
+        return getDifference(hours);
+    }
+
+    public Hour findLastHourBefore(Schedule schedule, LocalTime time) {
+        List<Hour> hours = schedule.getHours();
+        hours.sort(Comparator.comparing(Hour::getStart));
+        Hour lastHourBefore = null;
+
+        for (Hour hour : hours) {
+            if (hour.getEnd().isBefore(time) || hour.getEnd().equals(time)) {
+                lastHourBefore = hour;
+            } else {
+                break;
+            }
+        }
+
+        return lastHourBefore;
+    }
+
+    public Hour findFirstHourAfter(Schedule schedule, LocalTime time) {
+        List<Hour> hours = schedule.getHours();
+        hours.sort(Comparator.comparing(Hour::getStart));
+        for (Hour hour : hours) {
+            if (hour.getStart().isAfter(time)) {
+                return hour;
+            }
+        }
+        return null;
+    }
+
+    public boolean checkHoursAmount(List<Integer> hoursToAddIds) {
+        if (hoursToAddIds.size() == 1 || hoursToAddIds.isEmpty()) {
+            LOGGER.error("Only one hour can not be swapped/Hours are not provided");
+            return false;
+        }
+        return true;
+    }
+    public boolean checkFirstOrLastHour(List<Integer> hoursToAddIds) {
+        LOGGER.info("Checking if first hour of schedule is left alone");
+        List<Hour> hoursToAdd = hourRepository.findAllById(hoursToAddIds);
+        List<Hour> scheduleHours = hoursToAdd.get(0).getSchedule().getHours();
+        if (hoursToAdd.get(0) == scheduleHours.get(1)) {
+            LOGGER.error("First hour of a schedule can not be left alone");
+            return false;
+        }
+
+        LOGGER.info("Checking if last hour of schedule is left alone");
+        if (hoursToAdd.get(hoursToAdd.size() - 1) == scheduleHours.get(scheduleHours.size() - 2)) {
+            LOGGER.error("Last hour of a schedule can not be left alone");
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean checkHoursChain(List<Integer> hoursToAddIds) {
+        LOGGER.info("Checking if hours are chained");
+        List<Hour> hoursToAdd = hourRepository.findAllById(hoursToAddIds);
+        List<Hour> scheduleHours = hoursToAdd.get(0).getSchedule().getHours();
+        int firstHourToAddIndexInSchedule = scheduleHours.indexOf(hoursToAdd.get(0));
+        int i = 0;
+        while (i < hoursToAdd.size()) {
+            if (hoursToAdd.get(i) != scheduleHours.get(firstHourToAddIndexInSchedule)) {
+                LOGGER.error("Hours are not chained");
+                return false;
+            }
+            i++;
+            firstHourToAddIndexInSchedule++;
+        }
+        return true;
+    }
+
 }

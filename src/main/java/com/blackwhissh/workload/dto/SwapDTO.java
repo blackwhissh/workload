@@ -9,5 +9,6 @@ import java.util.List;
 
 public record SwapDTO(int swapId, String publisherWorkId, String receiverWorkId,
                       LocalDate publishDate, List<HourDTO> hourDTO,
-                      RequestStatusEnum status,  LocalDateTime targetDate) {
+                      RequestStatusEnum status,  LocalDate targetDate,
+                      LocalTime targetStart, LocalTime targetEnd) {
 }

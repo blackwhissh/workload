@@ -21,12 +21,28 @@ public class Swap {
     private Employee receiver;
     @ManyToMany
     private List<Hour> hours;
+    private LocalDate swapDate;
     private LocalDate publishDate;
     @Enumerated(EnumType.STRING)
     private RequestStatusEnum status;
-    private LocalDateTime targetDate;
+    private LocalDate targetDate;
+    private LocalTime targetStart;
+    private LocalTime targetEnd;
 
     public Swap() {
+    }
+
+    public Swap(Employee publisher, List<Hour> hours, LocalDate swapDate,
+                LocalDate publishDate, RequestStatusEnum status,
+                LocalDate targetDate, LocalTime targetStart) {
+        this.publisher = publisher;
+        this.hours = hours;
+        this.swapDate = swapDate;
+        this.publishDate = publishDate;
+        this.status = status;
+        this.targetDate = targetDate;
+        this.targetStart = targetStart;
+        this.targetEnd = targetStart.plusHours(hours.size());
     }
 
     public Integer getSwapId() {
@@ -77,11 +93,35 @@ public class Swap {
         this.status = status;
     }
 
-    public LocalDateTime getTargetDate() {
+    public LocalDate getTargetDate() {
         return targetDate;
     }
 
-    public void setTargetDate(LocalDateTime targetDate) {
+    public void setTargetDate(LocalDate targetDate) {
         this.targetDate = targetDate;
+    }
+
+    public LocalTime getTargetStart() {
+        return targetStart;
+    }
+
+    public void setTargetStart(LocalTime targetStart) {
+        this.targetStart = targetStart;
+    }
+
+    public LocalTime getTargetEnd() {
+        return targetEnd;
+    }
+
+    public void setTargetEnd(LocalTime targetEnd) {
+        this.targetEnd = targetEnd;
+    }
+
+    public LocalDate getSwapDate() {
+        return swapDate;
+    }
+
+    public void setSwapDate(LocalDate swapDate) {
+        this.swapDate = swapDate;
     }
 }

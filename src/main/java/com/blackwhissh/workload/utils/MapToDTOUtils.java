@@ -38,7 +38,9 @@ public class MapToDTOUtils {
                 swap.getPublishDate(),
                 hourDTOList,
                 swap.getStatus(),
-                swap.getTargetDate()
+                swap.getTargetDate(),
+                swap.getTargetStart(),
+                swap.getTargetEnd()
         );
     }
 
