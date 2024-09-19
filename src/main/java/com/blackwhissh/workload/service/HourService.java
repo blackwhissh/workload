@@ -377,4 +377,111 @@ public class HourService {
         return true;
     }
 
+
+
+    public boolean validateSwapTargetHours(Schedule targetSchedule, LocalTime targetStart,
+                                     LocalTime targetEnd, LocalDate swapDate,
+                                     List<Hour> hourList) {
+        LOGGER.info("Started hours validation");
+        return  validateTargetHourOccupied(targetSchedule, targetStart, targetEnd, swapDate, hourList)
+                && validateTargetDayLimit(targetSchedule, targetStart, targetEnd, swapDate, hourList.size())
+                && validateTargetWeekLimit(targetSchedule, targetStart, targetEnd, swapDate, hourList.size())
+                && validateTargetMonthlyHoursLimit(targetSchedule, targetStart, targetEnd, swapDate, hourList.size());
+    }
+
+    private boolean validateTargetHourOccupied(Schedule targetSchedule, LocalTime targetStart,
+                                            LocalTime targetEnd, LocalDate swapDate,
+                                            List<Hour> hourList){
+        LOGGER.info("Started checking if provided target hour is occupied or not");
+        List<Hour> targetHours = targetSchedule.getHours();
+        if (targetSchedule.getDate() == swapDate) {
+            hourList.forEach(hour -> {
+                targetHours.forEach(targetHour -> {
+                    if (targetHour.getStart().equals(hour.getStart())) {
+                        targetHours.remove(targetHour);
+                    }
+                });
+            });
+        }
+
+        for (Hour targetHour : targetHours) {
+            if (targetStart.isBefore(targetHour.getEnd()) && targetEnd.isAfter(targetHour.getStart())) {
+                LOGGER.error("Current hour is occupied");
+                throw new HourIsOccupiedException();
+            }
+        }
+
+        return true;
+    }
+    private boolean validateTargetDayLimit(Schedule targetSchedule, LocalTime targetStart,
+                                           LocalTime targetEnd, LocalDate swapDate,
+                                           Integer hoursToBeSwappedAmount) {
+        LOGGER.info("Started checking target daily hours limit");
+        double currentDayHours;
+        if (targetSchedule.getDate() != swapDate) {
+            currentDayHours = targetSchedule.getTotalHours();
+        }else {
+            currentDayHours = targetSchedule.getTotalHours() - hoursToBeSwappedAmount;
+        }
+
+        double targetHours = Duration.between(targetStart, targetEnd).toHours();
+        if (currentDayHours + targetHours > 12) {
+            LOGGER.error("Hour addition exceeds daily limit");
+            throw new DailyHoursLimitExceedsException();
+        }
+
+        return true;
+    }
+
+    private boolean validateTargetWeekLimit(Schedule targetSchedule, LocalTime start,
+                                            LocalTime end, LocalDate swapDate,
+                                            Integer hoursToBeSwappedAmount) {
+        LOGGER.info("Started checking target week hours limit");
+        double currentWeekHours;
+        if (targetSchedule.getDate() != swapDate) {
+            currentWeekHours = targetSchedule.getTotalHours();
+        }else {
+            currentWeekHours = targetSchedule.getTotalHours() - hoursToBeSwappedAmount;
+        }
+        double hours = Duration.between(start, end).toHours();
+        if (currentWeekHours + hours > 40) {
+            LOGGER.error("Hour addition exceeds target week limit");
+            throw new WeeklyHoursLimitExceedsException();
+        }
+        return true;
+    }
+
+    private boolean validateTargetMonthlyHoursLimit(Schedule targetSchedule, LocalTime targetStart,
+                                                 LocalTime targetEnd, LocalDate swapDate,
+                                                 Integer hoursToBeSwappedAmount) {
+        LOGGER.info("Started checking month hours limit");
+        double currentMonthHours;
+        if (targetSchedule.getDate() != swapDate) {
+            currentMonthHours = targetSchedule.getTotalHours();
+        }else {
+            currentMonthHours = targetSchedule.getTotalHours() - hoursToBeSwappedAmount;
+        }
+        double hours = Duration.between(targetStart, targetEnd).toHours();
+        if (currentMonthHours + hours > 160) {
+            LOGGER.error("Hour addition exceeds month limit");
+            throw new MonthlyHoursLimitExceedsException();
+        }
+        return true;
+    }
+
+    public boolean validateGap(Hour firstHour, Hour lastHour, Schedule targetSchedule) {
+        LocalTime start = firstHour.getStart();
+        LocalTime end = lastHour.getEnd();
+
+        // Fetch previous and next hours
+        Hour previousHour = findLastHourBefore(targetSchedule, start);
+        Hour nextHour = findFirstHourAfter(targetSchedule, end);
+
+        // Validate gaps
+        boolean validPreviousGap = (previousHour == null) || checkPreviousHourGap(firstHour, previousHour);
+        boolean validNextGap = (nextHour == null) || checkNextHourGap(lastHour, nextHour);
+
+        return validPreviousGap && validNextGap;
+    }
+
 }

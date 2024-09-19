@@ -35,6 +35,15 @@ public class Gift {
         this.status = status;
     }
 
+    public Gift(Employee publisher, Employee receiver, List<Hour> hours, LocalDate giftDate, LocalDate publishDate, RequestStatusEnum status) {
+        this.publisher = publisher;
+        this.receiver = receiver;
+        this.hours = hours;
+        this.giftDate = giftDate;
+        this.publishDate = publishDate;
+        this.status = status;
+    }
+
     public Integer getGiftId() {
         return giftId;
     }

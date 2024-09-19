@@ -12,5 +12,5 @@ public interface GiftRepository extends JpaRepository<Gift, Integer> {
     List<Gift> findAllByPublisher(Employee publisher);
     Optional<Gift> findByPublisher_WorkIdAndGiftId(String publisherWorkId, Integer giftId);
     Optional<Gift> findByGiftIdAndStatus(Integer giftId, RequestStatusEnum status);
-    List<Gift> findByReceiver_WorkIdAndStatus(String workId, RequestStatusEnum status);
+    List<Gift> findByReceiver_WorkIdAndStatusOrStatus(String workId, RequestStatusEnum statusA, RequestStatusEnum statusB);
 }

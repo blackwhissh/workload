@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/v1/gift")
@@ -27,10 +28,11 @@ public class GiftController {
 
     @PostMapping("/publish")
     public ResponseEntity<GiftDTO> publishGift(@RequestHeader(name = "Authorization") String jwt,
-                                               @RequestBody List<Integer> hourIdList) {
+                                               @RequestBody List<Integer> hourIdList,
+                                               @RequestParam Optional<String> receiverWorkId) {
         jwt = jwt.substring(7);
         String workId = jwtUtils.getWorkIdFromJwtToken(jwt);
-        return ResponseEntity.ok(giftService.publishGift(workId, hourIdList));
+        return ResponseEntity.ok(giftService.publishGift(workId, hourIdList, receiverWorkId));
     }
 
     @PreAuthorize("hasRole('ROLE_MANAGER')")

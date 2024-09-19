@@ -34,7 +34,8 @@ public class Swap {
 
     public Swap(Employee publisher, List<Hour> hours, LocalDate swapDate,
                 LocalDate publishDate, RequestStatusEnum status,
-                LocalDate targetDate, LocalTime targetStart) {
+                LocalDate targetDate, LocalTime targetStart,
+                LocalTime targetEnd) {
         this.publisher = publisher;
         this.hours = hours;
         this.swapDate = swapDate;
@@ -42,7 +43,7 @@ public class Swap {
         this.status = status;
         this.targetDate = targetDate;
         this.targetStart = targetStart;
-        this.targetEnd = targetStart.plusHours(hours.size());
+        this.targetEnd = targetEnd;
     }
 
     public Integer getSwapId() {

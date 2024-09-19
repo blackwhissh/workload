@@ -1,17 +1,11 @@
 package com.blackwhissh.workload.service;
 
 import com.blackwhissh.workload.dto.GiftDTO;
-import com.blackwhissh.workload.entity.Employee;
-import com.blackwhissh.workload.entity.Gift;
-import com.blackwhissh.workload.entity.Hour;
-import com.blackwhissh.workload.entity.Schedule;
+import com.blackwhissh.workload.entity.*;
 import com.blackwhissh.workload.entity.enums.RequestStatusEnum;
 import com.blackwhissh.workload.entity.enums.StatusEnum;
 import com.blackwhissh.workload.exceptions.list.*;
-import com.blackwhissh.workload.repository.EmployeeRepository;
-import com.blackwhissh.workload.repository.GiftRepository;
-import com.blackwhissh.workload.repository.HourRepository;
-import com.blackwhissh.workload.repository.ScheduleRepository;
+import com.blackwhissh.workload.repository.*;
 import com.blackwhissh.workload.utils.MapToDTOUtils;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -31,17 +25,19 @@ public class GiftService {
     private final EmployeeRepository employeeRepository;
     private final HourRepository hourRepository;
     private final ScheduleRepository scheduleRepository;
+    private final SwapRepository swapRepository;
     private final HourService hourService;
 
-    public GiftService(GiftRepository giftRepository, EmployeeRepository employeeRepository, HourRepository hourRepository, ScheduleRepository scheduleRepository, HourService hourService) {
+    public GiftService(GiftRepository giftRepository, EmployeeRepository employeeRepository, HourRepository hourRepository, ScheduleRepository scheduleRepository, SwapRepository swapRepository, HourService hourService) {
         this.giftRepository = giftRepository;
         this.employeeRepository = employeeRepository;
         this.hourRepository = hourRepository;
         this.scheduleRepository = scheduleRepository;
+        this.swapRepository = swapRepository;
         this.hourService = hourService;
     }
     @Transactional
-    public GiftDTO publishGift(String workId, List<Integer> hourIdList) {
+    public GiftDTO publishGift(String workId, List<Integer> hourIdList, Optional<String> receiverWorkId) {
         LOGGER.info("Started to publish gift");
         if (!hourService.checkHoursAmount(hourIdList)) {
             throw new WrongHourAmountException();
@@ -66,15 +62,22 @@ public class GiftService {
         checkAndSetGift(hourIdList, hourList);
 
         LocalDate giftDate = hourList.get(0).getSchedule().getDate();
-        Gift saved = giftRepository.save(new Gift(
+        Gift gift = new Gift(
                 publisher,
                 hourList,
                 giftDate,
                 LocalDate.now(),
                 RequestStatusEnum.ACTIVE
-        ));
+        );
+
+        receiverWorkId.ifPresent(id -> {
+            Employee receiver = employeeRepository.findByWorkId(id)
+                    .orElseThrow(EmployeeNotFoundException::new);
+            gift.setReceiver(receiver);
+        });
+        giftRepository.save(gift);
         LOGGER.info("Gift saved successfully");
-        return MapToDTOUtils.mapGiftToDTO(saved);
+        return MapToDTOUtils.mapGiftToDTO(gift);
     }
 
     private void checkAndSetGift(List<Integer> hourIdList, List<Hour> hourList) {
@@ -138,18 +141,10 @@ public class GiftService {
         Schedule schedule = scheduleRepository.findByDateAndEmployee_WorkId(giftDate, receiverWorkId).orElseThrow(ScheduleNotFoundException::new);
         Hour firstHour = gift.getHours().get(0);
         Hour lastHour = gift.getHours().get(gift.getHours().size() - 1);
-        LocalTime start = firstHour.getStart();
-        LocalTime end = lastHour.getEnd();
 
-        // Fetch previous and next hours
-        Hour previousHour = hourService.findLastHourBefore(schedule, start);
-        Hour nextHour = hourService.findFirstHourAfter(schedule, end);
-
-        // Validate gaps
-        boolean validPreviousGap = (previousHour == null) || hourService.checkPreviousHourGap(firstHour, previousHour);
-        boolean validNextGap = (nextHour == null) || hourService.checkNextHourGap(lastHour, nextHour);
-
-        if (validPreviousGap && validNextGap && hourService.validateHours(schedule, start, end) && validateExistingGifts(receiverWorkId, start, end, giftDate)) {
+        if (hourService.validateGap(firstHour,lastHour,schedule)
+                && hourService.validateHours(schedule, firstHour.getStart(), lastHour.getEnd())
+                && validateAgainstSwapsAndGifts(receiverWorkId, firstHour.getStart(), lastHour.getEnd(), giftDate)) {
             Employee employee = employeeRepository.findByWorkId(receiverWorkId).orElseThrow(EmployeeNotFoundException::new);
             gift.setReceiver(employee);
             gift.setStatus(RequestStatusEnum.IN_PROGRESS);
@@ -218,20 +213,50 @@ public class GiftService {
     }
 
 
-    public boolean validateExistingGifts(String receiverWorkId, LocalTime start, LocalTime end, LocalDate giftDate) {
+    private boolean validateExistingGifts(String receiverWorkId, LocalTime start, LocalTime end, LocalDate giftDate) {
         LOGGER.info("Validating against existing gifts");
-        List<Gift> existingGifts = giftRepository.findByReceiver_WorkIdAndStatus(receiverWorkId, RequestStatusEnum.IN_PROGRESS);
-        for (Gift existingGift : existingGifts) {
-            if (existingGift.getGiftDate().isEqual(giftDate)) {
-                LocalTime existingStart = existingGift.getHours().get(0).getStart();
-                LocalTime existingEnd = existingGift.getHours().get(existingGift.getHours().size() - 1).getEnd();
-                if (start.isBefore(existingEnd) && end.isAfter(existingStart)) {
-                    LOGGER.error("Gift time conflicts with an existing gift");
-                    throw new GiftTimeConflictException();
+        List<Gift> existingGifts = giftRepository
+                .findByReceiver_WorkIdAndStatusOrStatus(receiverWorkId, RequestStatusEnum.IN_PROGRESS, RequestStatusEnum.ACTIVE);
+        if (!existingGifts.isEmpty()) {
+            for (Gift existingGift : existingGifts) {
+                if (existingGift.getGiftDate().isEqual(giftDate)) {
+                    LocalTime existingStart = existingGift.getHours().get(0).getStart();
+                    LocalTime existingEnd = existingGift.getHours().get(existingGift.getHours().size() - 1).getEnd();
+                    if (start.isBefore(existingEnd) && end.isAfter(existingStart)) {
+                        LOGGER.error("Gift time conflicts with an existing gift");
+                        throw new GiftTimeConflictException();
+                    }
                 }
             }
         }
+        LOGGER.info("Validated against existing gifts");
         return true;
+    }
+
+    private boolean validateExistingSwaps(String receiverWorkId, LocalTime start, LocalTime end, LocalDate giftDate) {
+        LOGGER.info("Validating against existing swaps");
+        List<Swap> existingSwaps = swapRepository
+                .findByReceiver_WorkIdAndStatusOrStatus(receiverWorkId, RequestStatusEnum.IN_PROGRESS, RequestStatusEnum.ACTIVE);
+
+        if (!existingSwaps.isEmpty()) {
+            for (Swap existingSwap : existingSwaps) {
+                if (existingSwap.getTargetDate().isEqual(giftDate)) {
+                    LocalTime existingStart = existingSwap.getTargetStart();
+                    LocalTime existingEnd = existingSwap.getTargetEnd();
+                    if (start.isBefore(existingEnd) && end.isAfter(existingStart)) {
+                        LOGGER.error("Gift time conflicts with an existing swap target hours");
+                        throw new SwapTimeConflictException();
+                    }
+                }
+            }
+        }
+        LOGGER.info("Validated against existing swaps");
+        return true;
+    }
+
+    public boolean validateAgainstSwapsAndGifts(String receiverWorkId, LocalTime start, LocalTime end, LocalDate giftDate) {
+        return validateExistingGifts(receiverWorkId,start,end,giftDate)
+                && validateExistingSwaps(receiverWorkId,start,end,giftDate);
     }
 
 }

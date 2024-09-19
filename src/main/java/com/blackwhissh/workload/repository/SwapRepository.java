@@ -11,5 +11,7 @@ public interface SwapRepository extends JpaRepository<Swap, Integer> {
     List<Swap> findAllByStatusIsLike(RequestStatusEnum requestStatusEnum);
     Optional<Swap> findBySwapIdAndStatus(Integer swapId, RequestStatusEnum statusEnum);
     List<Swap> findByReceiver_WorkIdAndStatus(String workId, RequestStatusEnum statusEnum);
+    List<Swap> findByReceiver_WorkIdAndStatusOrStatus(String workId, RequestStatusEnum statusA, RequestStatusEnum statusB);
+
     Optional<Swap> findByPublisher_WorkIdAndSwapId(String workId, Integer swapId);
 }
