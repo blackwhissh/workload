@@ -21,7 +21,7 @@ public class JwtUtils {
     @Value("${jwt.key}")
     private String jwtSecret;
 
-    public String generateJwtToken(String username, RoleEnum roleEnum, String workId) {
+    public String generateJwtToken(String username, RoleEnum roleEnum) {
         Instant now = Instant.now();
         String jwtExpirationMs = "36000000";
         String role = "ROLE_" + roleEnum.toString();
@@ -30,7 +30,7 @@ public class JwtUtils {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
-                .claim("workId", workId)
+//                .claim("workId", workId)
                 .claim("role", role)
                 .setExpiration(expirationDate)
                 .signWith(key(), SignatureAlgorithm.HS256)
@@ -41,10 +41,10 @@ public class JwtUtils {
                 .parseClaimsJws(token).getBody().getSubject();
     }
 
-    public String getWorkIdFromJwtToken(String token) {
-        return Jwts.parserBuilder().setSigningKey(key()).build()
-                .parseClaimsJws(token).getBody().get("workId", String.class);
-    }
+//    public String getWorkIdFromJwtToken(String token) {
+//        return Jwts.parserBuilder().setSigningKey(key()).build()
+//                .parseClaimsJws(token).getBody().get("workId", String.class);
+//    }
 
     public boolean validateJwtToken(String authToken) {
         try {

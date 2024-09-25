@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,32 +48,50 @@ public class SwapService {
     }
 
     @Transactional
-    public SwapDTO publishSwap (String publisherWorkId, List<Integer> hourIdList,
+    public SwapDTO publishSwap (String publisherWorkId, LocalDate swapDate,
+                                LocalTime start, LocalTime end,
                                 LocalDate targetDate, LocalTime targetStart,
                                 LocalTime targetEnd, Optional<String> receiverWorkId) {
         LOGGER.info("Started to publish swap");
+        Schedule publisherSchedule = scheduleRepository
+                .findByDateAndEmployee_WorkId(swapDate, publisherWorkId)
+                .orElseThrow(ScheduleNotFoundException::new);
+        if (publisherSchedule.getHours().isEmpty()) {
+            throw new WrongHourAmountException();
+        }
+        hourService.checkIsBeforeRotation(publisherSchedule);
 
-        if (targetStart.isBefore(targetEnd)) {
+        List<Hour> hours = new ArrayList<>();
+
+        for (Hour hour : publisherSchedule.getHours()) {
+            checkHourStartAndEnd(start, end, hour, hours);
+        }
+        if (hours.size() != Duration.between(start, end).toHours()) {
+            LOGGER.error("Could not find all hours");
+            throw new NoNeededHoursPresentException();
+        }
+        if (targetEnd.isBefore(targetStart)) {
             LOGGER.error("Wrong target time is provided");
             throw new HourSwapException();
         }
-        if (!hourService.checkHoursAmount(hourIdList)) {
+        if (!hourService.checkHoursAmount(hours)) {
+            LOGGER.error("Wrong amount of proposed hours");
             throw new WrongHourAmountException();
         }
 
         if (Duration.between(targetStart, targetEnd).toHours() == 1L) {
+            LOGGER.error("Wrong amount of target hours");
             throw new WrongHourAmountException();
         }
 
-        if (!hourService.checkFirstOrLastHour(hourIdList)){
+        if (!hourService.checkFirstOrLastHour(hours)){
             throw new FirstOrLastHourTransferException();
         }
 
-        if (!hourService.checkHoursChain(hourIdList)) {
+        if (!hourService.checkHoursChain(hours)) {
             throw new HoursAreNotChainedException();
         }
 
-        //Checking if target date is other month
         if (targetDate.getMonthValue() != LocalDate.now().getMonthValue()) {
             if (!hourService.checkNextMonthRequest(targetDate)) {
                 throw new NextMonthSwapException();
@@ -88,17 +107,18 @@ public class SwapService {
         List<Hour> hourList = new ArrayList<>();
         LOGGER.info("Started searching hours");
 
-        for (int hourId : hourIdList) {
-            Hour hour = hourRepository.findById(hourId).orElseThrow();
+        for (Hour hour : hours) {
             if (hour.getGiftExists() || hour.getSwapExists()) {
                 LOGGER.error("One or more hour is already being gifted/swapped");
                 throw new HourSwapException();
             }
+            if (hour.getRotationItem() != null) {
+                LOGGER.error("Hour is already in rotation");
+                throw new HourIsInRotationException();
+            }
             hour.setSwapExists(true);
             hourList.add(hour);
         }
-
-        LocalDate swapDate = hourList.get(0).getSchedule().getDate();
 
         Hour firstHour = hourList.get(0);
         Hour lastHour = hourList.get(hourList.size() - 1);
@@ -130,28 +150,18 @@ public class SwapService {
         return MapToDTOUtils.mapSwapToDTO(swap);
     }
 
-
-
-    public List<SwapDTO> listAllSwaps() {
-        LOGGER.info("Started listing all swaps");
-        List<Swap> allSwaps = swapRepository.findAll();
-        LOGGER.info("Finished listing swaps");
-        List<SwapDTO> allDTO = new ArrayList<>();
-        for (Swap swap : allSwaps) {
-            allDTO.add(mapSwapToDTO(swap));
+    public static void checkHourStartAndEnd(LocalTime start, LocalTime end, Hour hour, List<Hour> hours) {
+        if (hour.getStart().equals(start)) {
+            hours.add(hour);
+            return;
         }
-        return allDTO;
-    }
-
-    public List<SwapDTO> listSwapsByStatus(RequestStatusEnum requestStatusEnum) {
-        LOGGER.info("Started listing swaps by status: " + requestStatusEnum);
-        List<Swap> allByStatus = swapRepository.findAllByStatusIsLike(requestStatusEnum);
-        LOGGER.info("Finished listing swaps by status: " + requestStatusEnum);
-        List<SwapDTO> allByStatusDTO = new ArrayList<>();
-        for (Swap swap : allByStatus) {
-            allByStatusDTO.add(mapSwapToDTO(swap));
+        if (hour.getEnd().equals(end)){
+            hours.add(hour);
+            return;
         }
-        return allByStatusDTO;
+        if (hour.getStart().isAfter(start) && hour.getEnd().isBefore(end)){
+            hours.add(hour);
+        }
     }
 
     @Transactional
@@ -165,44 +175,61 @@ public class SwapService {
         }
         LocalDate swapDate = swap.getSwapDate();
         LocalDate targetDate = swap.getTargetDate();
-        Schedule receiverSchedule = scheduleRepository.findByDateAndEmployee_WorkId(swapDate, receiverWorkId)
-                .orElseThrow(ScheduleNotFoundException::new);
 
         LOGGER.info("Checking if receiver has appropriate hours");
-        LocalTime start = swap.getHours().get(0).getStart();
-        LocalTime end = swap.getHours().get(swap.getHours().size() - 1).getEnd();
-        List<Hour> receiverHours = hourRepository
-                .findAllByStartAndEndAndSchedule(swap.getTargetStart(), swap.getTargetEnd(), receiverSchedule);
-        if (hourService.checkFirstOrLastHour(receiverHours.stream().map(Hour::getId).toList())){
+        Schedule receiverSchedule = scheduleRepository
+                .findByDateAndEmployee_WorkId(targetDate, receiverWorkId)
+                .orElseThrow(ScheduleNotFoundException::new);
+        Schedule receiverNewSchedule = scheduleRepository
+                .findByDateAndEmployee_WorkId(swapDate, receiverWorkId)
+                .orElseThrow(ScheduleNotFoundException::new);
+        if (receiverSchedule.getHours().isEmpty()) {
+            throw new WrongHourAmountException();
+        }
+        hourService.checkIsBeforeRotation(receiverSchedule);
+
+        List<Hour> receiverHours = new ArrayList<>();
+
+        for (Hour hour : receiverSchedule.getHours()) {
+            checkHourStartAndEnd(swap.getTargetStart(), swap.getTargetEnd(), hour, receiverHours);
+        }
+
+        if (receiverHours.size() != Duration.between(swap.getTargetStart(), swap.getTargetEnd()).toHours()) {
+            LOGGER.error("No needed hours are present in receiver's schedule");
+            throw new NoNeededHoursPresentException();
+        }
+
+        LocalTime publisherStart = swap.getHours().get(0).getStart();
+        LocalTime publisherEnd = swap.getHours().get(swap.getHours().size() - 1).getEnd();
+
+        if (hourService.checkFirstOrLastHour(receiverHours)){
             throw new FirstOrLastHourCannotBeTransferredException();
         }
         if (receiverHours.isEmpty()) {
             LOGGER.error("Receivers schedule is empty");
             throw new ScheduleIsEmptyException();
         }
-        if (receiverHours.size() != Duration.between(start, end).toHours()) {
-            LOGGER.error("No needed hours are present in receiver's schedule");
-            throw new NoNeededHoursPresentException();
-        }
+
 
         Hour firstHour = swap.getHours().get(0);
         Hour lastHour = swap.getHours().get(swap.getHours().size() - 1);
 
-        if (hourService.validateSwapTargetHours(receiverSchedule, start, end, targetDate, swap.getHours())
+        if (hourService.validateSwapTargetHours(receiverNewSchedule, publisherStart, publisherEnd, swapDate, swap.getHours())
                 && hourService.validateGap(firstHour, lastHour, receiverSchedule)
-                && giftService.validateAgainstSwapsAndGifts(receiverWorkId, start, end, targetDate)) {
+                && giftService.validateAgainstSwapsAndGifts(receiverWorkId, publisherStart, publisherEnd, swapDate)) {
             for (Hour hour : receiverHours) {
                 if (hour.getGiftExists() || hour.getSwapExists()) {
                     LOGGER.error("One or more hour is already is being gifted/swapped");
                     throw new HourSwapException();
                 }
                 hour.setSwapExists(true);
-                receiverHours.add(hour);
+
             }
             hourRepository.saveAll(receiverHours);
             Employee receiver = employeeRepository.findByWorkId(receiverWorkId).orElseThrow(EmployeeNotFoundException::new);
             swap.setReceiver(receiver);
             swap.setStatus(RequestStatusEnum.IN_PROGRESS);
+            swap.setReceiverHours(receiverHours);
             swapRepository.save(swap);
             return true;
         }
@@ -219,6 +246,25 @@ public class SwapService {
             return true;
         }
         return false;
+    }
+
+    @Transactional
+    public void rejectSwap(int swapId) {
+        LOGGER.info("Started rejecting swap with ID: " + swapId);
+        Swap swap = swapRepository.findBySwapIdAndStatus(swapId, RequestStatusEnum.IN_PROGRESS)
+                .orElseThrow(GiftNotFoundException::new);
+        swap.setStatus(RequestStatusEnum.REJECTED);
+        List<Hour> publisherHours = swap.getHours();
+        publisherHours = publisherHours.stream().peek(hour -> hour.setSwapExists(false)).toList();
+        swap.getHours().clear();
+
+        List<Hour> receiverHours = swap.getReceiverHours();
+        receiverHours = receiverHours.stream().peek(hour -> hour.setSwapExists(false)).toList();
+        swap.getReceiverHours().clear();
+
+        hourRepository.saveAll(publisherHours);
+        hourRepository.saveAll(receiverHours);
+        swapRepository.save(swap);
     }
 
     @Transactional
@@ -242,33 +288,46 @@ public class SwapService {
         LocalTime targetStart = swap.getTargetStart();
         LocalTime targetEnd = swap.getTargetEnd();
 
-        List<Hour> targetHours = hourRepository.findAllByStartAndEndAndSchedule(targetStart, targetEnd, receiverOldSchedule);
+        List<Hour> receiverOldHours = hourRepository.findBetweenStartEndAndSchedule_Id(targetStart, targetEnd, receiverOldSchedule.getScheduleId());
+        int receiverOldHoursSize = receiverOldHours.size();
         if (hourService.validateSwapTargetHours(receiverNewSchedule,start,end,swapDate,swap.getHours())
-                && hourService.validateSwapTargetHours(publisherNewSchedule, targetStart, targetEnd, targetDate, targetHours)){
+                && hourService.validateSwapTargetHours(publisherNewSchedule, targetStart, targetEnd, targetDate, receiverOldHours)){
 
             for (Hour hour : swap.getHours()) {
                 hour.setSwapExists(false);
                 publisherOldSchedule.getHours().remove(hour);
                 hour.setSchedule(receiverNewSchedule);
+                receiverNewSchedule.getHours().add(hour);
             }
             hourRepository.saveAll(swap.getHours());
 
-            List<Hour> receiverOldHours = hourRepository.findAllByStartAndEndAndSchedule(targetStart, targetEnd, receiverOldSchedule);
             for (Hour hour : receiverOldHours) {
+                if (hour.getRotationItem() != null) {
+                    LOGGER.error("Hour is already in rotation");
+                    throw new HourIsInRotationException();
+                }
                 hour.setSwapExists(false);
                 receiverOldSchedule.getHours().remove(hour);
                 hour.setSchedule(publisherNewSchedule);
+                publisherNewSchedule.getHours().add(hour);
             }
             hourRepository.saveAll(receiverOldHours);
 
+            receiverOldSchedule.setTotalHours(receiverOldSchedule.getTotalHours() - receiverOldHoursSize);
+            if (receiverOldSchedule.getTotalHours() == 0) {
+                receiverOldSchedule.setWorkStatus(StatusEnum.REST);
+            }
+            scheduleRepository.save(receiverOldSchedule);
             publisherOldSchedule.setTotalHours(publisherOldSchedule.getTotalHours() - swap.getHours().size());
             if (publisherOldSchedule.getTotalHours() == 0) {
                 publisherOldSchedule.setWorkStatus(StatusEnum.REST);
             }
             scheduleRepository.save(publisherOldSchedule);
 
-            publisherNewSchedule.setTotalHours(publisherNewSchedule.getTotalHours() + targetHours.size());
+            System.out.println(publisherNewSchedule.getTotalHours());
+            publisherNewSchedule.setTotalHours(publisherNewSchedule.getTotalHours() + receiverOldHoursSize);
             publisherNewSchedule.setWorkStatus(StatusEnum.WORK);
+            System.out.println(publisherNewSchedule.getTotalHours());
             scheduleRepository.save(publisherNewSchedule);
             receiverNewSchedule.setTotalHours(receiverNewSchedule.getTotalHours() + swap.getHours().size());
             receiverNewSchedule.setWorkStatus(StatusEnum.WORK);
@@ -282,19 +341,68 @@ public class SwapService {
         return false;
     }
 
-//    public boolean validateExistingSwaps(String workId, LocalTime start, LocalTime end, LocalDate swapDate) {
-//        LOGGER.info("Validating against existing swaps");
-//        List<Swap> existingSwaps = swapRepository.findByReceiver_WorkIdAndStatus(workId, RequestStatusEnum.IN_PROGRESS);
-//        for (Swap existingSwap : existingSwaps) {
-//            if (existingSwap.getSwapDate().isEqual(swapDate)) {
-//                LocalTime existingStart = existingSwap.getHours().get(0).getStart();
-//                LocalTime existingEnd = existingSwap.getHours().get(existingSwap.getHours().size() - 1).getEnd();
-//                if (start.isBefore(existingEnd) && end.isAfter(existingStart)) {
-//                    LOGGER.error("Swap time conflicts with an existing swap");
-//                    throw new SwapTimeConflictException();
-//                }
-//            }
-//        }
-//        return true;
-//    }
+    public void filterNonReceivedSwaps() {
+        LOGGER.info("Started filtering non-received swaps");
+        List<Swap> swaps = swapRepository.findAllByStatusIsLike(RequestStatusEnum.ACTIVE);
+
+        for (Swap swap : swaps) {
+            for (Hour hour : swap.getHours()) {
+                long duration = Duration.between(
+                        LocalDateTime.now(),
+                        LocalDateTime.of(hour.getSchedule().getDate(), hour.getStart()))
+                        .toMinutes();
+                if (duration < 240) {
+                    LOGGER.warn("Found non-received swap");
+                    swap.getHours().replaceAll(hour1 -> {
+                        hour1.setSwapExists(false);
+                        return hour1;
+                    });
+                    swapRepository.delete(swap);
+                    LOGGER.warn("Swap has been removed");
+                    break;
+                }
+            }
+        }
+    }
+
+    public List<SwapDTO> getSwapsByWorkId(String workId) {
+        LOGGER.info("Started search for swaps by workId");
+        Employee publisher = employeeRepository.findByWorkId(workId).orElseThrow(EmployeeNotFoundException::new);
+        if (!publisher.getUser().getActive()) {
+            throw new UserIsInactiveException();
+        }
+        List<Swap> allByPublisher = swapRepository.findAllByPublisher(publisher);
+        List<SwapDTO> allSwapDTO = new ArrayList<>();
+        allByPublisher.forEach(swap -> allSwapDTO.add(MapToDTOUtils.mapSwapToDTO(swap)));
+        return allSwapDTO;
+    }
+
+    public List<SwapDTO> getAllSwaps() {
+        LOGGER.info("Started search for all swaps");
+        List<Swap> allSwaps = swapRepository.findAll();
+        allSwaps = allSwaps.stream().filter(gift -> gift.getPublisher().getUser().getActive()).toList();
+        List<SwapDTO> allSwapsDTO = new ArrayList<>();
+        allSwaps.forEach(swap -> allSwapsDTO.add(MapToDTOUtils.mapSwapToDTO(swap)));
+        return allSwapsDTO;
+    }
+
+    public List<SwapDTO> getAllSwapsByStatus(RequestStatusEnum statusEnum) {
+        LOGGER.info("Started search for all swaps with type: " + statusEnum.name());
+        List<Swap> allByStatus = swapRepository.findAll()
+                .stream().filter(swap -> swap.getStatus().equals(statusEnum)).toList();
+        allByStatus = allByStatus.stream().filter(swap -> swap.getPublisher().getUser().getActive()).toList();
+        List<SwapDTO> allDTO = new ArrayList<>();
+        allByStatus.forEach(swap -> allDTO.add(MapToDTOUtils.mapSwapToDTO(swap)));
+        return allDTO;
+    }
+
+    public List<SwapDTO> getAllActiveSwaps() {
+        LOGGER.info("Started search for all active swaps");
+        List<Swap> allActive = swapRepository.findAll()
+                .stream().filter(swap -> swap.getStatus().equals(RequestStatusEnum.ACTIVE)).toList();
+        allActive = allActive.stream().filter(swap -> swap.getPublisher().getUser().getActive()).toList();
+        List<SwapDTO> allActiveDTO = new ArrayList<>();
+        allActive.forEach(swap -> allActiveDTO.add(MapToDTOUtils.mapSwapToDTO(swap)));
+        return allActiveDTO;
+    }
 }

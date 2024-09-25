@@ -25,18 +25,20 @@ public class User {
     private LocalDate registrationDate;
     @Enumerated(value = EnumType.STRING)
     private RoleEnum role;
-    private String tempPass;
+    @OneToOne(cascade = CascadeType.ALL)
+    private Employee employee;
+    private LocalDate dateOfHire;
 
     public User() {
     }
 
-    public User(Boolean isActive, RoleEnum role) {
-        this.role = role;
-        this.isActive = isActive;
-        String generatedPassword = GeneratorUtils.generatePassword();
-        this.tempPass = generatedPassword;
-        this.password = PasswordConfig.passwordEncoder().encode(generatedPassword);
+    public User(String email, RoleEnum role, String password, LocalDate dateOfHire) {
+        this.dateOfHire = dateOfHire;
+        this.email = email;
+        this.isActive = true;
         this.registrationDate = LocalDate.now();
+        this.role = role;
+        this.password = PasswordConfig.passwordEncoder().encode(password);
     }
 
     public User(RoleEnum roleEnum) {
@@ -83,19 +85,27 @@ public class User {
         this.role = role;
     }
 
-    public String getTempPass() {
-        return tempPass;
-    }
-
-    public void setTempPass(String tempPass) {
-        this.tempPass = tempPass;
-    }
-
     public LocalDate getRegistrationDate() {
         return registrationDate;
     }
 
     public void setRegistrationDate(LocalDate registrationDate) {
         this.registrationDate = registrationDate;
+    }
+
+    public Employee getEmployee() {
+        return employee;
+    }
+
+    public void setEmployee(Employee employee) {
+        this.employee = employee;
+    }
+
+    public LocalDate getDateOfHire() {
+        return dateOfHire;
+    }
+
+    public void setDateOfHire(LocalDate dateOfHire) {
+        this.dateOfHire = dateOfHire;
     }
 }

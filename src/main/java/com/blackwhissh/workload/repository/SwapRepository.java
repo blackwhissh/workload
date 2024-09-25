@@ -1,5 +1,6 @@
 package com.blackwhissh.workload.repository;
 
+import com.blackwhissh.workload.entity.Employee;
 import com.blackwhissh.workload.entity.Swap;
 import com.blackwhissh.workload.entity.enums.RequestStatusEnum;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,4 +15,6 @@ public interface SwapRepository extends JpaRepository<Swap, Integer> {
     List<Swap> findByReceiver_WorkIdAndStatusOrStatus(String workId, RequestStatusEnum statusA, RequestStatusEnum statusB);
 
     Optional<Swap> findByPublisher_WorkIdAndSwapId(String workId, Integer swapId);
+
+    List<Swap> findAllByPublisher(Employee publisher);
 }

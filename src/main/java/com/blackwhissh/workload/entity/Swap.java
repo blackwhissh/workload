@@ -19,7 +19,7 @@ public class Swap {
     private Employee publisher;
     @ManyToOne
     private Employee receiver;
-    @ManyToMany
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<Hour> hours;
     private LocalDate swapDate;
     private LocalDate publishDate;
@@ -28,6 +28,8 @@ public class Swap {
     private LocalDate targetDate;
     private LocalTime targetStart;
     private LocalTime targetEnd;
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<Hour> receiverHours;
 
     public Swap() {
     }
@@ -124,5 +126,13 @@ public class Swap {
 
     public void setSwapDate(LocalDate swapDate) {
         this.swapDate = swapDate;
+    }
+
+    public List<Hour> getReceiverHours() {
+        return receiverHours;
+    }
+
+    public void setReceiverHours(List<Hour> receiverHours) {
+        this.receiverHours = receiverHours;
     }
 }

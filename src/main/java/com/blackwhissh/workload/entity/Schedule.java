@@ -14,7 +14,7 @@ public class Schedule {
     @GeneratedValue(generator = "schedule_id", strategy = GenerationType.SEQUENCE)
     private Integer scheduleId;
     @ManyToOne
-    @JoinColumn(name = "employee_id", nullable = false)
+    @JoinColumn(name = "employee_id")
     private Employee employee;
     @Enumerated(value = EnumType.STRING)
     private StatusEnum workStatus;

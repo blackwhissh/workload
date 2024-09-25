@@ -21,17 +21,17 @@ public class ApplicationUserService implements UserDetailsService {
 
     @Override
     @Transactional
-    public ApplicationUser loadUserByUsername(String email) throws UsernameNotFoundException {
+    public ApplicationUser loadUserByUsername(String workId) throws UsernameNotFoundException {
         User user;
-        if (userRepository.existsByEmailAndIsActive(email, true)) {
-            user = userRepository.findByEmail(email).orElseThrow(EntityNotFoundException::new);
+        if (userRepository.existsByEmployee_WorkIdAndIsActive(workId, true)) {
+            user = userRepository.findByEmployee_WorkId(workId).orElseThrow(EntityNotFoundException::new);
             if (user != null) {
                 return new ApplicationUser(
-                        user.getUserId(), user.getEmail(), user.getPassword(),
+                        user.getUserId(), user.getEmployee().getWorkId(), user.getPassword(),
                         Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
                 );
             }
         }
-        throw new UsernameNotFoundException(String.format("Email %s not found", email));
+        throw new UsernameNotFoundException(String.format("Work ID %s not found", workId));
     }
 }

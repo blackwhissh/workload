@@ -287,4 +287,68 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(StudioNotFoundException.class)
+    public ResponseEntity<Object> handleStudioNotFoundException(StudioNotFoundException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Studio not found, check studio ID");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(WrongTableProvidedForStudioException.class)
+    public ResponseEntity<Object> handleWrongTableProvidedForStudioException(WrongTableProvidedForStudioException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Current studio does not have provided table");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HoursDoesNotBelongToEmployeeException.class)
+    public ResponseEntity<Object> handleHoursDoesNotBelongToEmployeeException(HoursDoesNotBelongToEmployeeException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Provided hours does not belong to chosen employee");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RotationNotFoundException.class)
+    public ResponseEntity<Object> handleRotationNotFoundException(RotationNotFoundException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Rotation not found");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HourIsInRotationException.class)
+    public ResponseEntity<Object> handleHourIsInRotationException(HourIsInRotationException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Hour is already added in rotation");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SwapOrGiftIsRestrictedException.class)
+    public ResponseEntity<Object> handleSwapOrGiftIsRestrictedException(SwapOrGiftIsRestrictedException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("You are not eligible for swap/gift, gap is less than 4");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RotationItemNotFoundException.class)
+    public ResponseEntity<Object> handleRotationItemNotFoundException(RotationItemNotFoundException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("Rotation item not found");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(UserIsInactiveException.class)
+    public ResponseEntity<Object> handleUserIsInactiveException(UserIsInactiveException e) {
+        ExceptionResponse response = new ExceptionResponse();
+        response.setDateTime(LocalDateTime.now());
+        response.setMessage("User is set to inactive");
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
 }

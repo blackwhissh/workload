@@ -6,6 +6,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+    open-in-view: false
   datasource:
     username: postgres
     password: 12345678

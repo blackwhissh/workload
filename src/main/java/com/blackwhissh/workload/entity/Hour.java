@@ -19,6 +19,8 @@ public class Hour {
     private Schedule schedule;
     private Boolean swapExists = false;
     private Boolean giftExists = false;
+    @ManyToOne
+    private RotationItem rotationItem;
 
     public Hour() {
     }
@@ -85,5 +87,11 @@ public class Hour {
         this.giftExists = giftExists;
     }
 
+    public RotationItem getRotationItem() {
+        return rotationItem;
+    }
 
+    public void setRotationItem(RotationItem rotationItem) {
+        this.rotationItem = rotationItem;
+    }
 }

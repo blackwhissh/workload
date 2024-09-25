@@ -1,11 +1,7 @@
 package com.blackwhissh.workload.utils;
 
-import com.blackwhissh.workload.dto.GiftDTO;
-import com.blackwhissh.workload.dto.HourDTO;
-import com.blackwhissh.workload.dto.SwapDTO;
-import com.blackwhissh.workload.entity.Gift;
-import com.blackwhissh.workload.entity.Hour;
-import com.blackwhissh.workload.entity.Swap;
+import com.blackwhissh.workload.dto.*;
+import com.blackwhissh.workload.entity.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +58,38 @@ public class MapToDTOUtils {
                 gift.getPublishDate(),
                 gift.getStatus(),
                 hourDTOList
+        );
+    }
+
+    public static RotationItemDTO mapRotationItemToDTO(RotationItem rotationItem) {
+        List<HourDTO> hourDTOList = new ArrayList<>();
+        if (!rotationItem.getEmployeeRotationHours().isEmpty()) {
+            for (Hour hour : rotationItem.getEmployeeRotationHours()) {
+                hourDTOList.add(mapHourToDTO(hour));
+            }
+        }
+        return new RotationItemDTO(
+                rotationItem.getRotationItemId(),
+                rotationItem.getStudio().getStudioId(),
+                rotationItem.getEmployee().getWorkId(),
+                hourDTOList,
+                rotationItem.getRotationAction(),
+                rotationItem.getUniform()
+        );
+    }
+
+    public static RotationDTO mapRotationToDTO(Rotation rotation) {
+        List<RotationItemDTO> rotationDTOS = new ArrayList<>();
+        if (!rotation.getRotationItems().isEmpty()) {
+            for (RotationItem rotationItem : rotation.getRotationItems()) {
+                rotationDTOS.add(mapRotationItemToDTO(rotationItem));
+            }
+        }
+        return new RotationDTO(
+                rotation.getRotationId(),
+                rotationDTOS,
+                rotation.getRotationDate(),
+                rotation.getRotationShift()
         );
     }
 }

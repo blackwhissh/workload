@@ -2,7 +2,6 @@ package com.blackwhissh.workload.dto.response;
 
 import com.blackwhissh.workload.dto.EmployeeDTO;
 import com.blackwhissh.workload.dto.HourDTO;
-import com.blackwhissh.workload.entity.Employee;
 import com.blackwhissh.workload.entity.enums.ShiftEnum;
 import com.blackwhissh.workload.entity.enums.StatusEnum;
 

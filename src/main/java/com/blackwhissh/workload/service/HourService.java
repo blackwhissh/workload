@@ -19,7 +19,8 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
+
+import static com.blackwhissh.workload.utils.MapToDTOUtils.mapHourToDTO;
 
 @Service
 public class HourService {
@@ -32,7 +33,20 @@ public class HourService {
         this.hourRepository = hourRepository;
     }
 
-    // FIXME: 9/8/2024 Fix schedule and hour relationship
+    public static void changeHours(Schedule receiverSchedule, Schedule publisherSchedule, HourRepository hourRepository, List<Hour> hours, ScheduleRepository scheduleRepository, Gift gift) {
+        hourRepository.saveAll(hours);
+
+        publisherSchedule.setTotalHours(publisherSchedule.getTotalHours() - hours.size());
+        if (publisherSchedule.getTotalHours() == 0) {
+            publisherSchedule.setWorkStatus(StatusEnum.REST);
+        }
+        scheduleRepository.save(publisherSchedule);
+
+        receiverSchedule.setTotalHours(receiverSchedule.getTotalHours() + hours.size());
+        receiverSchedule.setWorkStatus(StatusEnum.WORK);
+        scheduleRepository.save(receiverSchedule);
+    }
+
     public List<HourDTO> getHoursByScheduleId(Integer scheduleId) {
         LOGGER.info("Started get hours by schedule with ID: " + scheduleId);
         Schedule schedule = scheduleRepository.findById(scheduleId).orElseThrow(ScheduleNotFoundException::new);
@@ -108,40 +122,47 @@ public class HourService {
     public void removeHourById(Integer hourId) {
         Hour hour = hourRepository.findById(hourId).orElseThrow();
         Schedule schedule = hour.getSchedule();
+        hour.setSchedule(null);
+        hour.setEnd(null);
+        hour.setStart(null);
+        hour.setGiftExists(false);
+        hour.setSwapExists(false);
+        hour.setRotationItem(null);
         List<Hour> hours = schedule.getHours();
-        if (hours.get(0) == hour || hours.get(hours.size() - 1) == hour) {
-            LOGGER.error("First or last hour of day can not be deleted");
-            throw new HourRemoveException();
-        } else {
-            hours.remove(hour);
-            schedule.setTotalHours(schedule.getTotalHours() - 2);
-            schedule.setHours(hours);
-            scheduleRepository.save(schedule);
-            LOGGER.info("Hour with ID: " + hourId + " removed successfully!");
-        }
+
+        hours.remove(hour);
+        schedule.setTotalHours(schedule.getTotalHours() - 1);
+        schedule.setHours(hours);
+        scheduleRepository.save(schedule);
+        hourRepository.save(hour);
+        LOGGER.info("Hour with ID: " + hourId + " removed successfully!");
+
     }
-    //TODO remove validation for this
+
     @Transactional
     public List<HourDTO> addNewHour(AddNewHourRequest request) {
         Schedule schedule = scheduleRepository.findById(request.scheduleId())
                 .orElseThrow(ScheduleNotFoundException::new);
 
-        if (validateHours(schedule, request.start(), request.end())) {
-            double diff = Duration.between(request.start(), request.end()).toHours();
-            schedule.setTotalHours(schedule.getTotalHours() + diff);
-            List<Hour> hours = schedule.getHours();
-            hours.add(hourRepository.save(new Hour(request.start(), request.end())));
-            schedule.setHours(hours);
-            scheduleRepository.save(schedule);
-            List<HourDTO> hourDTOList = new ArrayList<>();
-            for (Hour hour : hours) {
-                hourDTOList.add(new HourDTO(hour.getId(), hour.getStart(), hour.getEnd(), hour.getSwapExists(), hour.getGiftExists()));
-            }
-            LOGGER.info("Add hour validated successfully");
-            return hourDTOList;
+        if (hourRepository.existsByStartAndEndAndSchedule_ScheduleId(request.start(), request.end(), request.scheduleId())) {
+            throw new HourAdditionValidationException();
         }
-        LOGGER.error("Error during validation");
-        throw new HourAdditionValidationException();
+        Hour hour = new Hour(request.start(), request.end());
+        hour.setSchedule(schedule);
+        hour.setGiftExists(false);
+        hour.setSwapExists(false);
+        hour.setRotationItem(null);
+
+        schedule.getHours().add(hour);
+        schedule.setTotalHours(schedule.getTotalHours() + 1);
+        schedule.setWorkStatus(StatusEnum.WORK);
+        hourRepository.save(hour);
+        Schedule save = scheduleRepository.save(schedule);
+        List<HourDTO> hourDTOList = new ArrayList<>();
+        for (Hour h : save.getHours()) {
+            hourDTOList.add(mapHourToDTO(h));
+        }
+        return hourDTOList;
     }
 
     public double getWeekHours(Schedule schedule) {
@@ -164,9 +185,8 @@ public class HourService {
         return monthHours;
     }
 
-    public boolean isValidMinimumLimit(int hourId, int hourAmount) {
+    public boolean isValidMinimumLimit(Hour hour, int hourAmount) {
         LOGGER.info("Validating monthly minimum limit");
-        Hour hour = hourRepository.findById(hourId).orElseThrow();
         double monthHours = getMonthHours(hour.getSchedule());
         return monthHours - hourAmount >= 40;
     }
@@ -185,22 +205,6 @@ public class HourService {
 
         return true;
     }
-
-    public static void changeHours(Schedule receiverSchedule, Schedule publisherSchedule, HourRepository hourRepository, List<Hour> hours, ScheduleRepository scheduleRepository, Gift gift) {
-        hourRepository.saveAll(hours);
-
-        publisherSchedule.setTotalHours(publisherSchedule.getTotalHours() - hours.size());
-        if (publisherSchedule.getTotalHours() == 0) {
-            publisherSchedule.setWorkStatus(StatusEnum.REST);
-        }
-        scheduleRepository.save(publisherSchedule);
-
-        receiverSchedule.setTotalHours(receiverSchedule.getTotalHours() + hours.size());
-        receiverSchedule.setWorkStatus(StatusEnum.WORK);
-        scheduleRepository.save(receiverSchedule);
-    }
-
-
 
     public boolean validateHours(Schedule schedule, LocalTime start, LocalTime end) {
         LOGGER.info("Started hours validation");
@@ -335,17 +339,23 @@ public class HourService {
         return null;
     }
 
-    public boolean checkHoursAmount(List<Integer> hoursToAddIds) {
+    public boolean checkHoursAmount(List<Hour> hoursToAddIds) {
         if (hoursToAddIds.size() == 1 || hoursToAddIds.isEmpty()) {
             LOGGER.error("Only one hour can not be swapped/Hours are not provided");
             return false;
         }
         return true;
     }
-    public boolean checkFirstOrLastHour(List<Integer> hoursToAddIds) {
+
+    public boolean checkFirstOrLastHour(List<Hour> hoursToAdd) {
         LOGGER.info("Checking if first hour of schedule is left alone");
-        List<Hour> hoursToAdd = hourRepository.findAllById(hoursToAddIds);
         List<Hour> scheduleHours = hoursToAdd.get(0).getSchedule().getHours();
+        scheduleHours.sort(new Comparator<Hour>() {
+            @Override
+            public int compare(Hour o1, Hour o2) {
+                return o1.getStart().getHour() - o2.getStart().getHour();
+            }
+        });
         if (hoursToAdd.get(0) == scheduleHours.get(1)) {
             LOGGER.error("First hour of a schedule can not be left alone");
             return false;
@@ -360,10 +370,15 @@ public class HourService {
         return true;
     }
 
-    public boolean checkHoursChain(List<Integer> hoursToAddIds) {
+    public boolean checkHoursChain(List<Hour> hoursToAdd) {
         LOGGER.info("Checking if hours are chained");
-        List<Hour> hoursToAdd = hourRepository.findAllById(hoursToAddIds);
         List<Hour> scheduleHours = hoursToAdd.get(0).getSchedule().getHours();
+        scheduleHours.sort(new Comparator<Hour>() {
+            @Override
+            public int compare(Hour o1, Hour o2) {
+                return o1.getStart().getHour() - o2.getStart().getHour();
+            }
+        });
         int firstHourToAddIndexInSchedule = scheduleHours.indexOf(hoursToAdd.get(0));
         int i = 0;
         while (i < hoursToAdd.size()) {
@@ -377,21 +392,29 @@ public class HourService {
         return true;
     }
 
+    public boolean checkIsBeforeRotation(Schedule schedule) {
+        LOGGER.info("Checking if duration between now and schedule is more than 4 hours");
+        if (Duration.between(LocalDateTime.now(), LocalDateTime.of(schedule.getDate(), schedule.getHours().get(0).getStart())).toMinutes() >= 240) {
+            return true;
+        }
+        LOGGER.error("Gap is less than 4, you are not eligible to do this action anymore");
+        throw new SwapOrGiftIsRestrictedException();
+    }
 
 
     public boolean validateSwapTargetHours(Schedule targetSchedule, LocalTime targetStart,
-                                     LocalTime targetEnd, LocalDate swapDate,
-                                     List<Hour> hourList) {
+                                           LocalTime targetEnd, LocalDate swapDate,
+                                           List<Hour> hourList) {
         LOGGER.info("Started hours validation");
-        return  validateTargetHourOccupied(targetSchedule, targetStart, targetEnd, swapDate, hourList)
+        return validateTargetHourOccupied(targetSchedule, targetStart, targetEnd, swapDate, hourList)
                 && validateTargetDayLimit(targetSchedule, targetStart, targetEnd, swapDate, hourList.size())
                 && validateTargetWeekLimit(targetSchedule, targetStart, targetEnd, swapDate, hourList.size())
                 && validateTargetMonthlyHoursLimit(targetSchedule, targetStart, targetEnd, swapDate, hourList.size());
     }
 
     private boolean validateTargetHourOccupied(Schedule targetSchedule, LocalTime targetStart,
-                                            LocalTime targetEnd, LocalDate swapDate,
-                                            List<Hour> hourList){
+                                               LocalTime targetEnd, LocalDate swapDate,
+                                               List<Hour> hourList) {
         LOGGER.info("Started checking if provided target hour is occupied or not");
         List<Hour> targetHours = targetSchedule.getHours();
         if (targetSchedule.getDate() == swapDate) {
@@ -413,6 +436,7 @@ public class HourService {
 
         return true;
     }
+
     private boolean validateTargetDayLimit(Schedule targetSchedule, LocalTime targetStart,
                                            LocalTime targetEnd, LocalDate swapDate,
                                            Integer hoursToBeSwappedAmount) {
@@ -420,7 +444,7 @@ public class HourService {
         double currentDayHours;
         if (targetSchedule.getDate() != swapDate) {
             currentDayHours = targetSchedule.getTotalHours();
-        }else {
+        } else {
             currentDayHours = targetSchedule.getTotalHours() - hoursToBeSwappedAmount;
         }
 
@@ -440,7 +464,7 @@ public class HourService {
         double currentWeekHours;
         if (targetSchedule.getDate() != swapDate) {
             currentWeekHours = targetSchedule.getTotalHours();
-        }else {
+        } else {
             currentWeekHours = targetSchedule.getTotalHours() - hoursToBeSwappedAmount;
         }
         double hours = Duration.between(start, end).toHours();
@@ -452,13 +476,13 @@ public class HourService {
     }
 
     private boolean validateTargetMonthlyHoursLimit(Schedule targetSchedule, LocalTime targetStart,
-                                                 LocalTime targetEnd, LocalDate swapDate,
-                                                 Integer hoursToBeSwappedAmount) {
+                                                    LocalTime targetEnd, LocalDate swapDate,
+                                                    Integer hoursToBeSwappedAmount) {
         LOGGER.info("Started checking month hours limit");
         double currentMonthHours;
         if (targetSchedule.getDate() != swapDate) {
             currentMonthHours = targetSchedule.getTotalHours();
-        }else {
+        } else {
             currentMonthHours = targetSchedule.getTotalHours() - hoursToBeSwappedAmount;
         }
         double hours = Duration.between(targetStart, targetEnd).toHours();

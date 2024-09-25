@@ -3,6 +3,7 @@ package com.blackwhissh.workload.service;
 import com.blackwhissh.workload.dto.EmployeeDTO;
 import com.blackwhissh.workload.dto.HourDTO;
 import com.blackwhissh.workload.dto.request.ScheduleByYearMonthRequest;
+import com.blackwhissh.workload.dto.request.ScheduleByYearMonthShiftRequest;
 import com.blackwhissh.workload.dto.response.ScheduleByYearMonthResponse;
 import com.blackwhissh.workload.entity.Employee;
 import com.blackwhissh.workload.entity.Hour;
@@ -10,6 +11,7 @@ import com.blackwhissh.workload.entity.Schedule;
 import com.blackwhissh.workload.entity.enums.ShiftEnum;
 import com.blackwhissh.workload.entity.enums.StatusEnum;
 import com.blackwhissh.workload.exceptions.list.EmployeeNotFoundException;
+import com.blackwhissh.workload.exceptions.list.ScheduleNotFoundException;
 import com.blackwhissh.workload.exceptions.list.WrongMonthException;
 import com.blackwhissh.workload.repository.EmployeeRepository;
 import com.blackwhissh.workload.repository.HourRepository;
@@ -65,7 +67,7 @@ public class ScheduleService {
             schedule.setDate(startDate);
 
             long daysFromStart = startDate.getDayOfYear() % 6;
-            if (employee.getSet() == 1) {
+            if (employee.getSet() == 2) {
                 schedule.setWorkStatus((daysFromStart < 3) ? StatusEnum.WORK : StatusEnum.REST);
             } else {
                 schedule.setWorkStatus((daysFromStart >= 3) ? StatusEnum.WORK : StatusEnum.REST);
@@ -91,7 +93,10 @@ public class ScheduleService {
         int lastDayOfMonth = YearMonth.of(year, month).atEndOfMonth().getDayOfMonth();
         LocalDate end = LocalDate.of(year, month, lastDayOfMonth);
         List<ScheduleByYearMonthResponse> scheduleByYearMonthList = new ArrayList<>();
-        List<Schedule> allByDateBetweenAndEmployeeWorkId = scheduleRepository.findAllByDateBetweenAndEmployee_WorkId(start, end, employee.getWorkId());
+        List<Schedule> allByDateBetweenAndEmployeeWorkId = scheduleRepository
+                .findAllByDateBetweenAndEmployee_WorkId(start, end, employee.getWorkId());
+        allByDateBetweenAndEmployeeWorkId.removeIf(schedule ->
+                null == schedule.getEmployee() || !schedule.getEmployee().getUser().getActive());
         allByDateBetweenAndEmployeeWorkId.forEach(schedule -> {
             schedule.setHours(hourRepository.findBySchedule(schedule));
         });
@@ -106,6 +111,9 @@ public class ScheduleService {
         LocalDate end = LocalDate.of(request.year(), request.month(), lastDayOfMonth);
 
         List<Schedule> allByDateBetween = scheduleRepository.findAllByDateBetween(start, end);
+        allByDateBetween.removeIf(schedule ->
+                null == schedule.getEmployee() || !schedule.getEmployee().getUser().getActive());
+
         List<ScheduleByYearMonthResponse> scheduleByYearMonthList = new ArrayList<>();
         allByDateBetween.forEach(schedule -> {
             schedule.setHours(hourRepository.findBySchedule(schedule));
@@ -136,5 +144,27 @@ public class ScheduleService {
                     schedule.getTotalHours(),
                     schedule.getEmployee().getShift()));
         }
+    }
+
+    public List<ScheduleByYearMonthResponse> getScheduleByYearMonthAndShift(ScheduleByYearMonthShiftRequest request) {
+        if (request.month() > 12 || request.month() <= 0) throw new WrongMonthException();
+        LocalDate start = LocalDate.of(request.year(), request.month(), 1);
+        int lastDayOfMonth = YearMonth.of(request.year(), request.month()).atEndOfMonth().getDayOfMonth();
+        LocalDate end = LocalDate.of(request.year(), request.month(), lastDayOfMonth);
+
+        List<Schedule> allByDateBetween = scheduleRepository.findAllByDateBetween(start, end);
+        allByDateBetween.removeIf(schedule ->
+                null == schedule.getEmployee() || !schedule.getEmployee().getUser().getActive());
+        List<ScheduleByYearMonthResponse> scheduleByYearMonthShiftList = new ArrayList<>();
+        allByDateBetween.forEach(schedule -> {
+            schedule.setHours(hourRepository.findBySchedule(schedule));
+        });
+        allByDateBetween.forEach(schedule -> {
+            if (!schedule.getEmployee().getShift().equals(request.shift())){
+                allByDateBetween.remove(schedule);
+            }
+        });
+        mapToScheduleDto(allByDateBetween, scheduleByYearMonthShiftList);
+        return scheduleByYearMonthShiftList;
     }
 }

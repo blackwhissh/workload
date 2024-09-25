@@ -28,10 +28,10 @@ public class RefreshTokenService {
         return refreshTokenRepository.findRefreshTokenByToken(token);
     }
 
-    public RefreshToken createRefreshToken(String email) {
+    public RefreshToken createRefreshToken(String workId) {
         RefreshToken refreshToken = new RefreshToken();
 
-        refreshToken.setUser(userRepository.findByEmail(email).orElseThrow(EntityNotFoundException::new));
+        refreshToken.setUser(userRepository.findByEmployee_WorkId(workId).orElseThrow(EntityNotFoundException::new));
         String refreshTokenDurationMs = "86400000";
         refreshToken.setExpiryDate(Instant.now().plusMillis(Long.parseLong(refreshTokenDurationMs)));
         refreshToken.setToken(UUID.randomUUID().toString());

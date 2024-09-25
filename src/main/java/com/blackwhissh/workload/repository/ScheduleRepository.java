@@ -15,5 +15,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
     Optional<Schedule> findFirstByEmployee_WorkIdAndDateBeforeAndWorkStatus(String workId, LocalDate current, StatusEnum statusEnum);
     Optional<Schedule> findFirstByEmployee_WorkIdAndDateAfterAndWorkStatus(String workId, LocalDate current, StatusEnum statusEnum);
     Optional<Schedule> findByDateAndEmployee_WorkId(LocalDate hourDay, String workId);
+    List<Schedule> findAllByDateAndWorkStatus(LocalDate date, StatusEnum statusEnum);
 
 }

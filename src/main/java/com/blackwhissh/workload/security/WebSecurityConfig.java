@@ -45,9 +45,9 @@ public class WebSecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                                .requestMatchers("/error", "/v1/auth/login", "/favicon.ico",
-                                        "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                                .anyRequest().authenticated()
+                        .requestMatchers("/error", "/v1/auth/login", "/favicon.ico",
+                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .anyRequest().authenticated()
                 );
 
 
@@ -70,6 +70,7 @@ public class WebSecurityConfig {
     AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
